@@ -22,7 +22,7 @@ describe("f1040sc.pdf fixture (Schedule C boxes 13, 30, 31)", () => {
   it("parses expected raw AcroForm strings (20 sequential runs)", async () => {
     if (!existsSync(PDF_PATH)) {
       throw new Error(
-        `Missing ${PDF_PATH}. Place f1040sc.pdf at the fish-eye project root.`,
+        `Missing ${PDF_PATH}. Expected fish-eye/f1040sc.pdf next to package.json.`,
       );
     }
     const fileBuf = readFileSync(PDF_PATH);
