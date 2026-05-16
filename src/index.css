@@ -163,12 +163,23 @@ code {
   color: var(--zinc-400);
 }
 
-.app-shell--standalone .app-hero .scm-btn.primary {
-  margin-top: 1.25rem;
-}
-
 .app-hero__links {
   margin-top: 1rem;
+}
+
+.app-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-top: 1.25rem;
+  align-items: center;
+}
+
+.app-hero__actions .scm-btn {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .irs-links {

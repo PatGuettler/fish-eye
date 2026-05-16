@@ -27,6 +27,12 @@ Visit the URL Vite prints (usually `http://localhost:5173`). The upload dialog o
 
 Fillable IRS forms work best. Scanned PDFs may use in-browser OCR and take longer on first run.
 
+### Test me now (IRS-style demo page)
+
+From the app home page, use **Test me now**, or open [`irs-demo.html`](public/irs-demo.html) on your deployment (for example `https://patguettler.github.io/fish-eye/irs-demo.html`).
+
+That static page simulates a return with many data fields. Beside Schedule C lines 13, 30, and 31, the **fish-eye** panel opens the import popup so you can load a PDF and drag or paste values into the demo form.
+
 ### Embed on your website
 
 Host the built app (for example on GitHub Pages) and load the popup helper from your deployment:

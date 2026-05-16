@@ -1,0 +1,570 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>IRS-style demo — Schedule C import test</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --irs-blue: #1b3d6d;
+        --irs-border: #9ca3af;
+        --irs-bg: #f3f4f6;
+        --irs-panel: #fff;
+        --widget-accent: #4f46e5;
+        --widget-bg: #0f0f12;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Source Sans 3", system-ui, sans-serif;
+        font-size: 15px;
+        line-height: 1.45;
+        color: #111827;
+        background: var(--irs-bg);
+      }
+
+      .banner {
+        background: var(--irs-blue);
+        color: #fff;
+        padding: 0.65rem 1.25rem;
+        font-size: 0.8rem;
+      }
+
+      .banner strong {
+        font-weight: 700;
+      }
+
+      .page {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 1.25rem 1rem 3rem;
+      }
+
+      .page-header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 1.25rem;
+      }
+
+      .page-header h1 {
+        margin: 0;
+        font-size: 1.5rem;
+        color: var(--irs-blue);
+      }
+
+      .page-header p {
+        margin: 0.35rem 0 0;
+        max-width: 42ch;
+        color: #4b5563;
+        font-size: 0.9rem;
+      }
+
+      .back-link {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--widget-accent);
+        text-decoration: none;
+      }
+
+      .back-link:hover {
+        text-decoration: underline;
+      }
+
+      form {
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+      }
+
+      fieldset {
+        margin: 0;
+        padding: 1rem 1.15rem 1.15rem;
+        border: 1px solid var(--irs-border);
+        border-radius: 4px;
+        background: var(--irs-panel);
+      }
+
+      legend {
+        padding: 0 0.35rem;
+        font-weight: 700;
+        font-size: 0.95rem;
+        color: var(--irs-blue);
+      }
+
+      .field-grid {
+        display: grid;
+        gap: 0.85rem 1rem;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      }
+
+      .field-grid--2 {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      @media (max-width: 640px) {
+        .field-grid--2 {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      label {
+        display: flex;
+        flex-direction: column;
+        gap: 0.3rem;
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: #374151;
+      }
+
+      .line-num {
+        font-weight: 700;
+        color: var(--irs-blue);
+        margin-right: 0.25rem;
+      }
+
+      input,
+      select {
+        padding: 0.45rem 0.55rem;
+        border: 1px solid #6b7280;
+        border-radius: 3px;
+        font: inherit;
+        background: #fff;
+      }
+
+      input:focus,
+      select:focus {
+        outline: 2px solid var(--widget-accent);
+        outline-offset: 1px;
+      }
+
+      input[readonly] {
+        background: #f9fafb;
+      }
+
+      /* Schedule C + fish-eye embed panel */
+      .schedule-c-block {
+        display: grid;
+        gap: 1rem;
+        grid-template-columns: 1fr min(300px, 100%);
+        align-items: start;
+      }
+
+      @media (max-width: 800px) {
+        .schedule-c-block {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .schedule-c-fields {
+        display: flex;
+        flex-direction: column;
+        gap: 0.85rem;
+      }
+
+      .widget-panel {
+        border-radius: 12px;
+        border: 1px solid #312e81;
+        background: linear-gradient(165deg, #1a1a22 0%, var(--widget-bg) 100%);
+        color: #e4e4e7;
+        padding: 1rem 1.1rem;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+      }
+
+      .widget-panel__title {
+        margin: 0 0 0.35rem;
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: #c7d2fe;
+      }
+
+      .widget-panel__hint {
+        margin: 0 0 1rem;
+        font-size: 0.8rem;
+        line-height: 1.5;
+        color: #a1a1aa;
+      }
+
+      .widget-panel__btn {
+        display: block;
+        width: 100%;
+        padding: 0.65rem 1rem;
+        border: none;
+        border-radius: 999px;
+        font: inherit;
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: #fff;
+        cursor: pointer;
+        background: linear-gradient(135deg, #4f46e5, #7c3aed);
+        box-shadow: 0 4px 14px rgba(79, 70, 229, 0.45);
+      }
+
+      .widget-panel__btn:hover {
+        filter: brightness(1.06);
+      }
+
+      .widget-panel__steps {
+        margin: 1rem 0 0;
+        padding-left: 1.15rem;
+        font-size: 0.78rem;
+        color: #a1a1aa;
+        line-height: 1.55;
+      }
+
+      .widget-panel__status {
+        margin-top: 0.85rem;
+        padding: 0.5rem 0.65rem;
+        border-radius: 8px;
+        font-size: 0.78rem;
+        background: rgba(99, 102, 241, 0.15);
+        border: 1px solid rgba(129, 140, 248, 0.35);
+        display: none;
+      }
+
+      .widget-panel__status.is-visible {
+        display: block;
+      }
+
+      .form-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        padding-top: 0.5rem;
+      }
+
+      .btn-secondary {
+        padding: 0.5rem 1rem;
+        border: 1px solid var(--irs-border);
+        border-radius: 4px;
+        background: #fff;
+        font: inherit;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      .btn-secondary:hover {
+        background: #f3f4f6;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="banner" role="note">
+      <strong>Demonstration only.</strong> Not an IRS website. For testing the
+      Schedule C import widget — do not enter real SSNs or tax data.
+    </div>
+
+    <div class="page">
+      <header class="page-header">
+        <div>
+          <h1>Form 1040 — sample data entry</h1>
+          <p>
+            Practice filling a return-like form. Use the Schedule C importer
+            beside Part II to pull lines 13, 30, and 31 from a PDF, then drag or
+            paste into the highlighted fields.
+          </p>
+        </div>
+        <a class="back-link" href="./index.html">← Back to fish-eye app</a>
+      </header>
+
+      <form id="irs-demo-form" autocomplete="off" onsubmit="return false;">
+        <fieldset>
+          <legend>Filing status &amp; taxpayer</legend>
+          <div class="field-grid field-grid--2">
+            <label>
+              Filing status
+              <select name="filingStatus">
+                <option value="">Select…</option>
+                <option>Single</option>
+                <option>Married filing jointly</option>
+                <option>Married filing separately</option>
+                <option>Head of household</option>
+              </select>
+            </label>
+            <label>
+              Tax year
+              <input type="number" name="taxYear" value="2025" min="2020" max="2030" />
+            </label>
+            <label>
+              Your first name and middle initial
+              <input type="text" name="firstName" placeholder="Jane Q" />
+            </label>
+            <label>
+              Last name
+              <input type="text" name="lastName" placeholder="Taxpayer" />
+            </label>
+            <label>
+              Your social security number
+              <input
+                type="text"
+                name="ssn"
+                inputmode="numeric"
+                placeholder="XXX-XX-XXXX"
+                maxlength="11"
+              />
+            </label>
+            <label>
+              Spouse’s SSN (if joint)
+              <input type="text" name="spouseSsn" placeholder="Optional" />
+            </label>
+            <label style="grid-column: 1 / -1">
+              Home address
+              <input type="text" name="address" placeholder="123 Main St" />
+            </label>
+            <label>
+              City
+              <input type="text" name="city" />
+            </label>
+            <label>
+              State
+              <input type="text" name="state" maxlength="2" placeholder="CA" />
+            </label>
+            <label>
+              ZIP code
+              <input type="text" name="zip" inputmode="numeric" maxlength="10" />
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Income &amp; adjustments (Form 1040)</legend>
+          <div class="field-grid">
+            <label>
+              <span class="line-num">1a</span> Wages (W-2)
+              <input type="text" name="wages" inputmode="decimal" placeholder="0" />
+            </label>
+            <label>
+              <span class="line-num">2b</span> Taxable interest
+              <input type="text" name="interest" placeholder="0" />
+            </label>
+            <label>
+              <span class="line-num">3b</span> Ordinary dividends
+              <input type="text" name="dividends" placeholder="0" />
+            </label>
+            <label>
+              <span class="line-num">8</span> Other income (schedule lines)
+              <input type="text" name="otherIncome" placeholder="0" />
+            </label>
+            <label>
+              <span class="line-num">11</span> Adjusted gross income
+              <input type="text" name="agi" placeholder="0" readonly />
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Schedule C — business (Part I &amp; II)</legend>
+          <div class="field-grid" style="margin-bottom: 1rem">
+            <label>
+              Business name
+              <input type="text" name="businessName" placeholder="Acme Consulting" />
+            </label>
+            <label>
+              Principal business or profession
+              <input type="text" name="profession" placeholder="Consulting" />
+            </label>
+            <label>
+              Employer ID number (EIN)
+              <input type="text" name="ein" placeholder="Optional" />
+            </label>
+            <label>
+              Business code (NAICS)
+              <input type="text" name="naics" placeholder="541600" />
+            </label>
+            <label>
+              <span class="line-num">1</span> Gross receipts or sales
+              <input type="text" name="scLine1" data-field="scheduleC.line1" placeholder="0" />
+            </label>
+            <label>
+              <span class="line-num">7</span> Gross income
+              <input type="text" name="scLine7" placeholder="0" />
+            </label>
+          </div>
+
+          <div class="schedule-c-block">
+            <div class="schedule-c-fields" aria-labelledby="sc-import-heading">
+              <p id="sc-import-heading" style="margin: 0 0 0.5rem; font-weight: 700; color: var(--irs-blue)">
+                Part II — Expenses (import lines below from PDF)
+              </p>
+              <label>
+                <span class="line-num">13</span> Depreciation and section 179
+                <input
+                  type="text"
+                  id="sc-box13"
+                  name="scLine13"
+                  data-field="scheduleC.box13"
+                  placeholder="From Schedule C PDF"
+                />
+              </label>
+              <label>
+                <span class="line-num">30</span> Expenses for business use of home
+                <input
+                  type="text"
+                  id="sc-box30"
+                  name="scLine30"
+                  data-field="scheduleC.box30"
+                  placeholder="From Schedule C PDF"
+                />
+              </label>
+              <label>
+                <span class="line-num">31</span> Net profit or (loss)
+                <input
+                  type="text"
+                  id="sc-box31"
+                  name="scLine31"
+                  data-field="scheduleC.box31"
+                  placeholder="From Schedule C PDF"
+                />
+              </label>
+            </div>
+
+            <aside class="widget-panel" aria-label="Schedule C PDF import">
+              <p class="widget-panel__title">fish-eye — Schedule C import</p>
+              <p class="widget-panel__hint">
+                Opens a popup to read your Schedule C PDF in the browser. Drag
+                value chips onto the three fields at left, or click a chip to
+                copy and paste.
+              </p>
+              <button type="button" class="widget-panel__btn" id="import-schedule-c">
+                Import Schedule C PDF
+              </button>
+              <ol class="widget-panel__steps">
+                <li>Choose a fillable IRS Schedule C PDF</li>
+                <li>Review parsed lines 13, 30, 31</li>
+                <li>Drag each chip into the matching field</li>
+              </ol>
+              <p class="widget-panel__status" id="import-status" role="status"></p>
+            </aside>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Schedule SE &amp; payments</legend>
+          <div class="field-grid">
+            <label>
+              <span class="line-num">SE</span> Self-employment tax (estimated)
+              <input type="text" name="seTax" placeholder="0" />
+            </label>
+            <label>
+              <span class="line-num">25</span> Federal income tax withheld
+              <input type="text" name="withheld" placeholder="0" />
+            </label>
+            <label>
+              <span class="line-num">33</span> Total tax
+              <input type="text" name="totalTax" placeholder="0" />
+            </label>
+            <label>
+              <span class="line-num">34</span> Estimated tax payments
+              <input type="text" name="estimatedPayments" placeholder="0" />
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Signature</legend>
+          <div class="field-grid field-grid--2">
+            <label>
+              Your signature (type name)
+              <input type="text" name="signature" />
+            </label>
+            <label>
+              Date
+              <input type="date" name="signDate" />
+            </label>
+            <label>
+              Preparer PTIN (if paid preparer)
+              <input type="text" name="ptin" placeholder="Optional" />
+            </label>
+            <label>
+              Phone
+              <input type="tel" name="phone" />
+            </label>
+          </div>
+        </fieldset>
+
+        <div class="form-actions">
+          <button type="button" class="btn-secondary" id="clear-sc-fields">
+            Clear Schedule C lines only
+          </button>
+          <button type="reset" class="btn-secondary">Reset entire form</button>
+        </div>
+      </form>
+    </div>
+
+    <script src="./embed-host.js"></script>
+    <script>
+      (function () {
+        var statusEl = document.getElementById("import-status");
+        var fields = {
+          box13: document.getElementById("sc-box13"),
+          box30: document.getElementById("sc-box30"),
+          box31: document.getElementById("sc-box31"),
+        };
+
+        function displayValue(num, raw) {
+          if (raw != null && String(raw).trim() !== "") return String(raw);
+          return String(num);
+        }
+
+        function showStatus(msg) {
+          statusEl.textContent = msg;
+          statusEl.classList.add("is-visible");
+        }
+
+        document.getElementById("import-schedule-c").addEventListener("click", function () {
+          if (typeof ScheduleCWidget === "undefined") {
+            showStatus("Widget script failed to load. Check embed-host.js path.");
+            return;
+          }
+          ScheduleCWidget.open({
+            onPopulate: function (payload) {
+              fields.box13.value = displayValue(payload.box13, payload.raw && payload.raw.box13);
+              fields.box30.value = displayValue(payload.box30, payload.raw && payload.raw.box30);
+              fields.box31.value = displayValue(payload.box31, payload.raw && payload.raw.box31);
+              showStatus(
+                "Received values — you can still drag from the popup or edit fields manually.",
+              );
+            },
+            onClose: function () {
+              if (!statusEl.classList.contains("is-visible")) {
+                showStatus("Closed. Open again to import another PDF.");
+              }
+            },
+          });
+        });
+
+        document.getElementById("clear-sc-fields").addEventListener("click", function () {
+          fields.box13.value = "";
+          fields.box30.value = "";
+          fields.box31.value = "";
+          statusEl.classList.remove("is-visible");
+          statusEl.textContent = "";
+        });
+
+        [fields.box13, fields.box30, fields.box31].forEach(function (input) {
+          input.addEventListener("dragover", function (e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "copy";
+          });
+          input.addEventListener("drop", function (e) {
+            e.preventDefault();
+            var text = e.dataTransfer.getData("text/plain");
+            if (text) input.value = text;
+          });
+        });
+      })();
+    </script>
+  </body>
+</html>

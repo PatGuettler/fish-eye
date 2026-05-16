@@ -44,13 +44,21 @@ export default function App() {
             with drag-and-drop chips, or paste after clicking a value.
           </p>
           <IrsScheduleCLinks className="app-hero__links" />
-          <button
-            type="button"
-            className="scm-btn primary"
-            onClick={() => setModalOpen(true)}
-          >
-            Upload Schedule C
-          </button>
+          <div className="app-hero__actions">
+            <button
+              type="button"
+              className="scm-btn primary"
+              onClick={() => setModalOpen(true)}
+            >
+              Upload Schedule C
+            </button>
+            <a
+              className="scm-btn scm-btn--ghost"
+              href={`${import.meta.env.BASE_URL}irs-demo.html`}
+            >
+              Test me now
+            </a>
+          </div>
         </header>
       </main>
 
