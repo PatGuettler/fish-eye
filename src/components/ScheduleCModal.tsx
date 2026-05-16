@@ -193,8 +193,14 @@ export function ScheduleCModal({
             </label>
           </div>
           {busy && (
-            <div className="scm-spinner" role="status">
-              Parsing document…
+            <div className="scm-spinner-wrap" role="status">
+              <div className="scm-spinner" />
+              <div>
+                <p className="scm-spinner-title">Parsing…</p>
+                <p className="scm-spinner-hint">
+                  Scanned PDFs use in-browser OCR (first run may take ~30–60s).
+                </p>
+              </div>
             </div>
           )}
           {error && <p className="scm-error">{error}</p>}

@@ -507,24 +507,41 @@ code {
   display: none;
 }
 
-.scm-spinner {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-top: 1rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--zinc-400);
+.scm-spinner-wrap {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-top: 1.15rem;
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius-md);
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  text-align: left;
 }
 
-.scm-spinner::before {
-  content: "";
-  width: 1rem;
-  height: 1rem;
+.scm-spinner-wrap .scm-spinner {
+  flex-shrink: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-top: 0.1rem;
   border-radius: 50%;
   border: 2px solid var(--zinc-700);
   border-top-color: var(--indigo-400);
   animation: scm-spin 0.65s linear infinite;
+}
+
+.scm-spinner-title {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--zinc-200);
+}
+
+.scm-spinner-hint {
+  margin: 0.25rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--zinc-500);
 }
 
 @keyframes scm-spin {

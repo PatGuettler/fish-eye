@@ -1,11 +1,20 @@
 import * as pdfjs from "pdfjs-dist";
+import { findBestAcroValues } from "./acroFormMatch";
+import type { ScheduleCLine } from "./acroFormMatch";
+import { extractLinesFromOcrRows, ocrPdfToLineStrings } from "./ocrExtract";
+import {
+  clusterItemsIntoRows,
+  extractLineAmountFromRows,
+  type PdfTextItem,
+  rowsToMergedStrings,
+} from "./pdfTextRows";
 import {
   normalizeExtractedScheduleC,
   type ScheduleCExtracted,
 } from "./scheduleCExtract";
 
 export type ParseScheduleCResult =
-  | { ok: true; data: ScheduleCExtracted; source: "acroform" | "text-heuristic" }
+  | { ok: true; data: ScheduleCExtracted; source: string }
   | { ok: false; error: string };
 
 function configureWorker(): void {
@@ -45,41 +54,36 @@ async function collectAcroFormFieldsAsync(
   return map;
 }
 
-/** Common IRS / vendor field naming patterns for Schedule C lines. */
-const LINE_13_KEYS = [
-  /^l_?13$/i,
-  /^line_?13$/i,
-  /^f1_13(_[0-9]+)?$/i,
-  /^c1_13$/i,
-  /^scheduleC.*13/i,
-  /^sc.*l13$/i,
-  /^p1_t13/i,
-];
-const LINE_30_KEYS = [/^l_?30$/i, /^line_?30$/i, /^f1_30/i, /^c1_30$/i, /^sc.*l30$/i];
-const LINE_31_KEYS = [/^l_?31$/i, /^line_?31$/i, /^f1_31/i, /^c1_31$/i, /^sc.*l31$/i];
-
-function firstMatchingField(
-  fields: FieldMap,
-  patterns: RegExp[],
-): string | undefined {
-  for (const [name, val] of fields) {
-    for (const re of patterns) {
-      if (re.test(name)) return val;
+async function collectTextItems(
+  pdf: pdfjs.PDFDocumentProxy,
+): Promise<PdfTextItem[]> {
+  const merged: PdfTextItem[] = [];
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    const viewport = page.getViewport({ scale: 1 });
+    for (const raw of content.items) {
+      const it = raw as { str?: string; transform?: number[] };
+      if (!it.str || !it.transform || it.transform.length < 6) continue;
+      const tx = it.transform[4];
+      const ty = it.transform[5];
+      const [vx, vy] = viewport.convertToViewportPoint(tx, ty);
+      merged.push({ str: it.str, x: vx, y: vy });
     }
   }
-  return undefined;
+  return merged;
 }
 
 function parseAmountNearLineLabels(
-  items: { str: string; x: number; y: number }[],
-  lineNum: 13 | 30 | 31,
+  items: PdfTextItem[],
+  lineNum: ScheduleCLine,
 ): string | undefined {
   const label = new RegExp(`^${lineNum}\\b`);
   const rows = items.filter((it) => label.test(it.str.trim()));
   if (rows.length === 0) return undefined;
   const anchor = rows.reduce((a, b) => (a.x < b.x ? a : b));
   const rowY = anchor.y;
-  const tolerance = 6;
+  const tolerance = 8;
   const amounts = items.filter((it) => {
     if (Math.abs(it.y - rowY) > tolerance) return false;
     if (it.x <= anchor.x + 2) return false;
@@ -97,32 +101,73 @@ function parseAmountNearLineLabels(
   return amounts[0].str;
 }
 
-async function extractViaTextHeuristic(
+async function extractViaMergedRows(
   pdf: pdfjs.PDFDocumentProxy,
-): Promise<ScheduleCExtracted | null> {
-  const merged: { str: string; x: number; y: number }[] = [];
+): Promise<Partial<Record<ScheduleCLine, string>>> {
+  const out: Partial<Record<ScheduleCLine, string>> = {};
+  const rowStrings: string[] = [];
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
     const content = await page.getTextContent();
     const viewport = page.getViewport({ scale: 1 });
+    const pageItems: PdfTextItem[] = [];
     for (const raw of content.items) {
       const it = raw as { str?: string; transform?: number[] };
       if (!it.str || !it.transform || it.transform.length < 6) continue;
       const tx = it.transform[4];
       const ty = it.transform[5];
       const [vx, vy] = viewport.convertToViewportPoint(tx, ty);
-      merged.push({ str: it.str, x: vx, y: vy });
+      pageItems.push({ str: it.str, x: vx, y: vy });
     }
+    const clusters = clusterItemsIntoRows(pageItems, 5);
+    rowStrings.push(...rowsToMergedStrings(clusters));
   }
-  const r13 = parseAmountNearLineLabels(merged, 13);
-  const r30 = parseAmountNearLineLabels(merged, 30);
-  const r31 = parseAmountNearLineLabels(merged, 31);
-  if (r13 == null && r30 == null && r31 == null) return null;
-  return normalizeExtractedScheduleC({
-    box13Raw: r13,
-    box30Raw: r30,
-    box31Raw: r31,
-  });
+  for (const line of [13, 30, 31] as const) {
+    const v = extractLineAmountFromRows(rowStrings, line);
+    if (v !== undefined) out[line] = v;
+  }
+  return out;
+}
+
+async function extractViaLegacyHeuristic(
+  pdf: pdfjs.PDFDocumentProxy,
+): Promise<Partial<Record<ScheduleCLine, string>>> {
+  const items = await collectTextItems(pdf);
+  const out: Partial<Record<ScheduleCLine, string>> = {};
+  for (const line of [13, 30, 31] as const) {
+    const v = parseAmountNearLineLabels(items, line);
+    if (v !== undefined) out[line] = v;
+  }
+  return out;
+}
+
+function pickRaw(
+  line: ScheduleCLine,
+  ...layers: Partial<Record<ScheduleCLine, string>>[]
+): string | undefined {
+  let emptyHit: string | undefined;
+  for (const layer of layers) {
+    if (!Object.prototype.hasOwnProperty.call(layer, line)) continue;
+    const v = layer[line];
+    if (v === undefined) continue;
+    const s = String(v);
+    if (s.trim() !== "") return s;
+    emptyHit ??= s;
+  }
+  return emptyHit;
+}
+
+function countNonemptyFromLayers(
+  acro: Partial<Record<ScheduleCLine, string>>,
+  merged: Partial<Record<ScheduleCLine, string>>,
+  legacy: Partial<Record<ScheduleCLine, string>>,
+): number {
+  let n = 0;
+  for (const line of [13, 30, 31] as const) {
+    const v = pickRaw(line, acro, merged, legacy);
+    if (v !== undefined && v.trim() !== "") n++;
+  }
+  return n;
 }
 
 export async function parseScheduleCPdfBytes(
@@ -132,29 +177,47 @@ export async function parseScheduleCPdfBytes(
     configureWorker();
     const pdf = await pdfjs.getDocument({ data, useSystemFonts: true }).promise;
     const fields = await collectAcroFormFieldsAsync(pdf);
-    const b13 = firstMatchingField(fields, LINE_13_KEYS);
-    const b30 = firstMatchingField(fields, LINE_30_KEYS);
-    const b31 = firstMatchingField(fields, LINE_31_KEYS);
-    if (b13 != null || b30 != null || b31 != null) {
+    const acro = findBestAcroValues(fields, 55);
+    const merged = await extractViaMergedRows(pdf);
+    const legacy = await extractViaLegacyHeuristic(pdf);
+
+    let ocr: Partial<Record<ScheduleCLine, string>> = {};
+    const preOcrCount = countNonemptyFromLayers(acro, merged, legacy);
+    if (preOcrCount < 3 && typeof document !== "undefined") {
+      try {
+        const ocrLines = await ocrPdfToLineStrings(pdf);
+        ocr = extractLinesFromOcrRows(ocrLines);
+      } catch {
+        /* OCR optional; ignore if worker fails */
+      }
+    }
+
+    const r13 = pickRaw(13, acro, merged, legacy, ocr);
+    const r30 = pickRaw(30, acro, merged, legacy, ocr);
+    const r31 = pickRaw(31, acro, merged, legacy, ocr);
+
+    const dataOut = normalizeExtractedScheduleC({
+      box13Raw: r13,
+      box30Raw: r30,
+      box31Raw: r31,
+    });
+
+    const sources: string[] = [];
+    if ([13, 30, 31].some((l) => l in acro)) sources.push("acroform");
+    if ([13, 30, 31].some((l) => l in merged)) sources.push("text-rows");
+    if ([13, 30, 31].some((l) => l in legacy)) sources.push("text-heuristic");
+    if ([13, 30, 31].some((l) => l in ocr)) sources.push("ocr");
+    const source = sources.length > 0 ? sources.join("+") : "unknown";
+
+    if ([r13, r30, r31].every((v) => v === undefined)) {
       return {
-        ok: true,
-        source: "acroform",
-        data: normalizeExtractedScheduleC({
-          box13Raw: b13,
-          box30Raw: b30,
-          box31Raw: b31,
-        }),
+        ok: false,
+        error:
+          "Could not read lines 13, 30, and 31. Use the official IRS fillable Schedule C, a PDF with a text layer, or a clearer scan — OCR ran in-browser but may still miss values on complex layouts.",
       };
     }
-    const heuristic = await extractViaTextHeuristic(pdf);
-    if (heuristic) {
-      return { ok: true, source: "text-heuristic", data: heuristic };
-    }
-    return {
-      ok: false,
-      error:
-        "Could not find Schedule C lines 13, 30, and 31. Try an IRS fillable Schedule C PDF or ensure line numbers are visible in the text layer.",
-    };
+
+    return { ok: true, data: dataOut, source };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     return { ok: false, error: msg };
