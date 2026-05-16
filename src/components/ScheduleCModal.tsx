@@ -7,6 +7,7 @@ import {
 } from "../lib/scheduleCExtract";
 import { parseScheduleCPdfBytes } from "../lib/pdfScheduleCParser";
 import {
+  buildPopulatePayload,
   postCloseToParent,
   postPopulateToParent,
 } from "../integration/parentBridge";
@@ -18,6 +19,8 @@ type Props = {
   onClose: () => void;
   /** Restrict postMessage target; use parent origin in production. */
   parentOrigin?: string;
+  /** Loaded inside an iframe on a host site (embed.html). */
+  embedded?: boolean;
   /** Same-window host (standalone) — iframe hosts rely on postMessage instead. */
   onPopulate?: (payload: ScheduleCExtracted) => void;
 };
@@ -59,6 +62,7 @@ export function ScheduleCModal({
   open,
   onClose,
   parentOrigin = "*",
+  embedded = false,
   onPopulate,
 }: Props) {
   const [busy, setBusy] = useState(false);
@@ -101,8 +105,9 @@ export function ScheduleCModal({
         if (box13RequiresForm4562(result.data.box13)) {
           window.alert(FORM_4562_MESSAGE);
         }
+        const payload = buildPopulatePayload(result.data, result.raw);
         onPopulate?.(result.data);
-        postPopulateToParent(result.data, parentOrigin);
+        postPopulateToParent(payload, parentOrigin);
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
       } finally {
@@ -145,7 +150,10 @@ export function ScheduleCModal({
   if (!open) return null;
 
   return (
-    <div className="scm-overlay" role="presentation">
+    <div
+      className={`scm-overlay${embedded ? " scm-overlay--embedded" : ""}`}
+      role="presentation"
+    >
       <div className="scm-backdrop" onClick={onClose} aria-hidden />
       <div
         className="scm-dialog"
@@ -215,8 +223,10 @@ export function ScheduleCModal({
           <section className="scm-results" aria-live="polite">
             <h2>Parsed values</h2>
             <p className="scm-muted">
-              Source: <strong>{source}</strong>. Drag a chip into your portal if
-              auto-fill missed a control.
+              Source: <strong>{source}</strong>.{" "}
+              {embedded
+                ? "Drag a chip into a field on your site, or click to copy."
+                : "Drag a chip into your form, or click to copy."}
             </p>
             <ul className="scm-chips">
               <li>
@@ -243,7 +253,10 @@ export function ScheduleCModal({
                 type="button"
                 className="scm-btn primary"
                 onClick={() => {
-                  postPopulateToParent(data, parentOrigin);
+                  postPopulateToParent(
+                    buildPopulatePayload(data, raw),
+                    parentOrigin,
+                  );
                   postCloseToParent(parentOrigin);
                   reset();
                   onClose();
@@ -277,11 +290,20 @@ function DraggableChip({ label, value }: { label: string; value: string }) {
     <span
       className="scm-chip"
       draggable
+      role="button"
+      tabIndex={0}
+      onClick={() => void navigator.clipboard?.writeText(value)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          void navigator.clipboard?.writeText(value);
+        }
+      }}
       onDragStart={(e) => {
         e.dataTransfer.setData("text/plain", value);
         e.dataTransfer.effectAllowed = "copy";
       }}
-      title={`Drag ${label} into a field`}
+      title={`Drag or click to copy ${label}`}
     >
       <span className="scm-chip-label">{label}</span>
       <span className="scm-chip-value">{value}</span>

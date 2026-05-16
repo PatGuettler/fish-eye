@@ -1,9 +1,13 @@
+import type { ScheduleCBoxRaw } from "../lib/scheduleCExtract";
+
 export const MESSAGE_SOURCE = "schedule-c-poc-widget" as const;
 
 export type ScheduleCPopulatePayload = {
   box13: number;
   box30: number;
   box31: number;
+  /** Original PDF field text when available (for display / paste). */
+  raw?: ScheduleCBoxRaw;
 };
 
 export type ScheduleCPostMessage =
@@ -16,6 +20,17 @@ export type ScheduleCPostMessage =
       source: typeof MESSAGE_SOURCE;
       type: "SCHEDULE_C_CLOSE";
     };
+
+export function buildPopulatePayload(
+  data: { box13: number; box30: number; box31: number },
+  raw?: ScheduleCBoxRaw | null,
+): ScheduleCPopulatePayload {
+  const payload: ScheduleCPopulatePayload = { ...data };
+  if (raw && (raw.box13 || raw.box30 || raw.box31)) {
+    payload.raw = raw;
+  }
+  return payload;
+}
 
 export function postPopulateToParent(
   payload: ScheduleCPopulatePayload,
@@ -41,7 +56,35 @@ export function postCloseToParent(targetOrigin: string = "*"): void {
   }
 }
 
+export type ScheduleCMessageHandlers = {
+  onPopulate?: (payload: ScheduleCPopulatePayload) => void;
+  onClose?: () => void;
+};
+
 /**
- * Parent page: window.addEventListener('message', (ev) => { ... verify ev.origin and ev.data.source ... })
- * Then map payload to your form fields or trigger your SPA store.
+ * Parent page: validate `ev.origin` and `ev.data.source === MESSAGE_SOURCE`.
  */
+export function listenForScheduleCMessages(
+  handlers: ScheduleCMessageHandlers,
+  allowedOrigin: string | string[] = "*",
+): () => void {
+  const allowed = Array.isArray(allowedOrigin)
+    ? allowedOrigin
+    : [allowedOrigin];
+
+  function onMessage(ev: MessageEvent) {
+    const d = ev.data;
+    if (!d || d.source !== MESSAGE_SOURCE) return;
+    if (allowed[0] !== "*" && !allowed.includes(ev.origin)) return;
+
+    if (d.type === "SCHEDULE_C_POPULATE") {
+      handlers.onPopulate?.(d.payload);
+    }
+    if (d.type === "SCHEDULE_C_CLOSE") {
+      handlers.onClose?.();
+    }
+  }
+
+  window.addEventListener("message", onMessage);
+  return () => window.removeEventListener("message", onMessage);
+}

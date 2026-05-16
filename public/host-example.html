@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Schedule C widget — host example</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        max-width: 32rem;
+        margin: 2rem auto;
+        padding: 0 1rem;
+      }
+      label {
+        display: block;
+        margin: 1rem 0 0.35rem;
+        font-weight: 600;
+      }
+      input {
+        width: 100%;
+        padding: 0.5rem;
+        font-size: 1rem;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Your tax portal</h1>
+    <p>
+      This page shows how to embed the Schedule C popup on your site. Values
+      auto-fill when possible; you can still drag or paste into fields.
+    </p>
+    <button type="button" id="import-btn">Import Schedule C</button>
+
+    <label for="box13">Box 13</label>
+    <input id="box13" data-field="scheduleC.box13" />
+
+    <label for="box30">Box 30</label>
+    <input id="box30" data-field="scheduleC.box30" />
+
+    <label for="box31">Box 31</label>
+    <input id="box31" data-field="scheduleC.box31" />
+
+    <script src="./embed-host.js" defer></script>
+    <script>
+      document.getElementById("import-btn").addEventListener("click", () => {
+        ScheduleCWidget.open({
+          onPopulate(payload) {
+            const display = (n, raw) =>
+              raw && String(raw).trim() ? raw : String(n);
+            document.getElementById("box13").value = display(
+              payload.box13,
+              payload.raw?.box13,
+            );
+            document.getElementById("box30").value = display(
+              payload.box30,
+              payload.raw?.box30,
+            );
+            document.getElementById("box31").value = display(
+              payload.box31,
+              payload.raw?.box31,
+            );
+          },
+        });
+      });
+    </script>
+  </body>
+</html>
+

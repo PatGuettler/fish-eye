@@ -34,15 +34,28 @@ jobs:
       - name: Unit tests
         run: npm test
 
+      - name: Set Pages base path
+        run: |
+          REPO="${{ github.event.repository.name }}"
+          OWNER="${{ github.repository_owner }}"
+          if [ "$REPO" = "${OWNER}.github.io" ]; then
+            echo "VITE_BASE=/" >> "$GITHUB_ENV"
+          else
+            echo "VITE_BASE=/${REPO}/" >> "$GITHUB_ENV"
+          fi
+
       - name: Build
-        env:
-          VITE_BASE: /${{ github.event.repository.name }}/
         run: npm run build
 
       - name: Verify static output
         run: |
           test -f dist/index.html
+          test -f dist/.nojekyll
           grep -q 'script type="module"' dist/index.html || (echo "dist/index.html missing Vite bundle tags" && exit 1)
+          if grep -q '/src/main.tsx' dist/index.html; then
+            echo "ERROR: dist/index.html still references dev /src/main.tsx — build did not run"
+            exit 1
+          fi
           ls -la dist/assets | head
 
       - uses: actions/upload-pages-artifact@v4
