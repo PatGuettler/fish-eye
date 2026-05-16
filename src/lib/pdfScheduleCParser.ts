@@ -1,5 +1,5 @@
 import * as pdfjs from "pdfjs-dist";
-import { findBestAcroValues } from "./acroFormMatch";
+import { extractScheduleCAcroValues } from "./acroFormMatch";
 import type { ScheduleCLine } from "./acroFormMatch";
 import { extractLinesFromOcrRows, ocrPdfToLineStrings } from "./ocrExtract";
 import {
@@ -14,19 +14,28 @@ import {
 } from "./scheduleCLayoutExtract";
 import {
   normalizeExtractedScheduleC,
+  type ScheduleCBoxRaw,
   type ScheduleCExtracted,
 } from "./scheduleCExtract";
 
 export type ParseScheduleCResult =
-  | { ok: true; data: ScheduleCExtracted; source: string }
+  | { ok: true; data: ScheduleCExtracted; raw: ScheduleCBoxRaw; source: string }
   | { ok: false; error: string };
 
 function configureWorker(): void {
-  const workerSrc = new URL(
-    "pdfjs-dist/build/pdf.worker.min.mjs",
+  if (pdfjs.GlobalWorkerOptions.workerSrc) return;
+  if (typeof window !== "undefined") {
+    pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+      "pdfjs-dist/build/pdf.worker.min.mjs",
+      import.meta.url,
+    ).href;
+    return;
+  }
+  /** Node / Vitest when worker was not preset (e.g. future SSR use). */
+  pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+    "../../node_modules/pdfjs-dist/build/pdf.worker.min.mjs",
     import.meta.url,
-  ).toString();
-  pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
+  ).href;
 }
 
 type FieldMap = Map<string, string>;
@@ -141,7 +150,7 @@ export async function parseScheduleCPdfBytes(
     configureWorker();
     const pdf = await pdfjs.getDocument({ data, useSystemFonts: true }).promise;
     const fields = await collectAcroFormFieldsAsync(pdf);
-    const acro = findBestAcroValues(fields, 55);
+    const acro = extractScheduleCAcroValues(fields);
     const layout = await extractViaLayout(pdf);
     const merged = await extractViaMergedRows(pdf);
 
@@ -156,15 +165,21 @@ export async function parseScheduleCPdfBytes(
       }
     }
 
-    const r13 = pickRaw(13, layout, acro, merged, ocr);
-    const r30 = pickRaw(30, layout, acro, merged, ocr);
-    const r31 = pickRaw(31, layout, acro, merged, ocr);
+    const r13 = pickRaw(13, acro, layout, merged, ocr);
+    const r30 = pickRaw(30, acro, layout, merged, ocr);
+    const r31 = pickRaw(31, acro, layout, merged, ocr);
 
     const dataOut = normalizeExtractedScheduleC({
       box13Raw: r13,
       box30Raw: r30,
       box31Raw: r31,
     });
+
+    const raw: ScheduleCBoxRaw = {
+      box13: r13 ?? "",
+      box30: r30 ?? "",
+      box31: r31 ?? "",
+    };
 
     const sources: string[] = [];
     if ([13, 30, 31].some((l) => l in acro)) sources.push("acroform");
@@ -181,7 +196,7 @@ export async function parseScheduleCPdfBytes(
       };
     }
 
-    return { ok: true, data: dataOut, source };
+    return { ok: true, data: dataOut, raw, source };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     return { ok: false, error: msg };

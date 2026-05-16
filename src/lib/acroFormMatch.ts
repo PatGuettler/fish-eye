@@ -62,3 +62,44 @@ export function findBestAcroValues(
   }
   return out;
 }
+
+/** When scoring misses (odd field names), match common IRS fillable suffixes. */
+function findFallbackFieldValue(
+  fields: Map<string, string>,
+  line: ScheduleCLine,
+): string | undefined {
+  const n = String(line);
+  const patterns = [
+    new RegExp(`f\\d+_${n}\\[\\d+\\]$`, "i"),
+    new RegExp(`_${n}\\[\\d+\\]$`, "i"),
+    new RegExp(`\\.${n}\\[\\d+\\]$`, "i"),
+  ];
+  for (const re of patterns) {
+    for (const [k, v] of fields) {
+      if (!re.test(k.trim())) continue;
+      if (v != null && String(v).trim() !== "") return String(v);
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Best-effort AcroForm values for Schedule C lines 13 / 30 / 31, including
+ * fallback field-name matching for official IRS f1040sc-style PDFs.
+ */
+export function extractScheduleCAcroValues(
+  fields: Map<string, string>,
+  minScore = 40,
+): Partial<Record<ScheduleCLine, string>> {
+  const out: Partial<Record<ScheduleCLine, string>> = {
+    ...findBestAcroValues(fields, minScore),
+  };
+  for (const line of LINES) {
+    const cur = out[line];
+    const hasVal = cur !== undefined && String(cur).trim() !== "";
+    if (hasVal) continue;
+    const fb = findFallbackFieldValue(fields, line);
+    if (fb !== undefined) out[line] = fb;
+  }
+  return out;
+}

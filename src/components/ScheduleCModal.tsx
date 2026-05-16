@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from "react";
 import {
   FORM_4562_MESSAGE,
   box13RequiresForm4562,
+  type ScheduleCBoxRaw,
   type ScheduleCExtracted,
 } from "../lib/scheduleCExtract";
 import { parseScheduleCPdfBytes } from "../lib/pdfScheduleCParser";
@@ -63,6 +64,7 @@ export function ScheduleCModal({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<ScheduleCExtracted | null>(null);
+  const [raw, setRaw] = useState<ScheduleCBoxRaw | null>(null);
   const [source, setSource] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const dragDepth = useRef(0);
@@ -70,6 +72,7 @@ export function ScheduleCModal({
   const reset = useCallback(() => {
     setError(null);
     setData(null);
+    setRaw(null);
     setSource(null);
   }, []);
 
@@ -84,6 +87,7 @@ export function ScheduleCModal({
       setBusy(true);
       setError(null);
       setData(null);
+      setRaw(null);
       try {
         const buf = await file.arrayBuffer();
         const result = await parseScheduleCPdfBytes(buf);
@@ -92,6 +96,7 @@ export function ScheduleCModal({
           return;
         }
         setData(result.data);
+        setRaw(result.raw);
         setSource(result.source);
         if (box13RequiresForm4562(result.data.box13)) {
           window.alert(FORM_4562_MESSAGE);
@@ -215,13 +220,22 @@ export function ScheduleCModal({
             </p>
             <ul className="scm-chips">
               <li>
-                <DraggableChip label="Box 13" value={String(data.box13)} />
+                <DraggableChip
+                  label="Box 13"
+                  value={chipDisplay(raw, data, "box13")}
+                />
               </li>
               <li>
-                <DraggableChip label="Box 30" value={String(data.box30)} />
+                <DraggableChip
+                  label="Box 30"
+                  value={chipDisplay(raw, data, "box30")}
+                />
               </li>
               <li>
-                <DraggableChip label="Box 31" value={String(data.box31)} />
+                <DraggableChip
+                  label="Box 31"
+                  value={chipDisplay(raw, data, "box31")}
+                />
               </li>
             </ul>
             <div className="scm-actions">
@@ -246,6 +260,16 @@ export function ScheduleCModal({
       </div>
     </div>
   );
+}
+
+function chipDisplay(
+  raw: ScheduleCBoxRaw | null,
+  data: ScheduleCExtracted,
+  key: keyof ScheduleCBoxRaw,
+): string {
+  const full = raw?.[key];
+  if (full != null && full.trim() !== "") return full;
+  return String(data[key]);
 }
 
 function DraggableChip({ label, value }: { label: string; value: string }) {

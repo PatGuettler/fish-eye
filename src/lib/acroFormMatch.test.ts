@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { findBestAcroValues, scoreFieldNameForLine } from "./acroFormMatch";
+import {
+  extractScheduleCAcroValues,
+  findBestAcroValues,
+  scoreFieldNameForLine,
+} from "./acroFormMatch";
 
 describe("scoreFieldNameForLine", () => {
   it("scores IRS-style f1_13[0] highly", () => {
@@ -42,5 +46,20 @@ describe("findBestAcroValues", () => {
     const v = findBestAcroValues(m);
     expect(v[13]).toBe("");
     expect(v[30]).toBe("50");
+  });
+});
+
+describe("extractScheduleCAcroValues", () => {
+  it("uses IRS-style suffix fallback when scores are below minScore", () => {
+    const m = new Map<string, string>([
+      ["topmostSubform[0].Page1[0].Table_Line13[0].Row1[0].f1_13[0]", "You 13"],
+      ["topmostSubform[0].Page2[0].f1_30[0]", "you 30"],
+      ["topmostSubform[0].Page2[0].f1_31[0]", "you 31"],
+    ]);
+    expect(extractScheduleCAcroValues(m, 999)).toEqual({
+      13: "You 13",
+      30: "you 30",
+      31: "you 31",
+    });
   });
 });

@@ -33,6 +33,13 @@ export type ScheduleCExtracted = {
   box31: number;
 };
 
+/** Raw strings chosen before numeric normalization (e.g. AcroForm fill text). */
+export type ScheduleCBoxRaw = {
+  box13: string;
+  box30: string;
+  box31: string;
+};
+
 export function normalizeExtractedScheduleC(input: {
   box13Raw: string | null | undefined;
   box30Raw: string | null | undefined;
