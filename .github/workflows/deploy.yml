@@ -50,6 +50,9 @@ jobs:
       - name: Verify static output
         run: |
           test -f dist/index.html
+          test -f dist/embed.html
+          test -f dist/irs-demo.html
+          test -f dist/embed-host.js
           test -f dist/.nojekyll
           grep -q 'script type="module"' dist/index.html || (echo "dist/index.html missing Vite bundle tags" && exit 1)
           if grep -q '/src/main.tsx' dist/index.html; then

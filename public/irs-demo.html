@@ -523,12 +523,18 @@
           statusEl.classList.add("is-visible");
         }
 
+        var widgetBase =
+          typeof ScheduleCWidget !== "undefined" && ScheduleCWidget.baseUrl
+            ? ScheduleCWidget.baseUrl
+            : new URL(".", location.href).href;
+
         document.getElementById("import-schedule-c").addEventListener("click", function () {
           if (typeof ScheduleCWidget === "undefined") {
             showStatus("Widget script failed to load. Check embed-host.js path.");
             return;
           }
           ScheduleCWidget.open({
+            baseUrl: widgetBase,
             onPopulate: function (payload) {
               fields.box13.value = displayValue(payload.box13, payload.raw && payload.raw.box13);
               fields.box30.value = displayValue(payload.box30, payload.raw && payload.raw.box30);

@@ -2,7 +2,7 @@
  * Host-site loader for the Schedule C widget (iframe popup).
  *
  * Usage:
- *   <script src="https://YOUR_PAGES_URL/embed-host.js" defer></script>
+ *   <script src="https://YOUR_PAGES_URL/embed-host.js"></script>
  *   <button type="button" onclick="ScheduleCWidget.open()">Import Schedule C</button>
  *
  * Options: { baseUrl?, parentOrigin?, onPopulate?, onClose? }
@@ -10,12 +10,28 @@
 (function (global) {
   const WIDGET_SOURCE = "schedule-c-poc-widget";
 
-  function scriptBaseUrl() {
+  /** Resolved when this file loads — do not use document.currentScript inside open(). */
+  const WIDGET_BASE_URL = (function resolveBaseAtLoad() {
     const el = document.currentScript;
     if (el && el.src) {
       return new URL(".", el.src).href;
     }
-    return global.location.href;
+    const tagged = document.querySelector('script[src*="embed-host.js"]');
+    if (tagged && tagged.src) {
+      return new URL(".", tagged.src).href;
+    }
+    return new URL(".", global.location.href).href;
+  })();
+
+  function normalizeBase(url) {
+    return String(url).replace(/\/?$/, "/");
+  }
+
+  function widgetBaseUrl(options) {
+    if (options && options.baseUrl) {
+      return normalizeBase(options.baseUrl);
+    }
+    return normalizeBase(WIDGET_BASE_URL);
   }
 
   function createOverlay(iframe, onClose) {
@@ -45,13 +61,11 @@
 
   ScheduleCWidget.open = function open(options) {
     options = options || {};
-    const baseUrl = (options.baseUrl || scriptBaseUrl()).replace(/\/?$/, "/");
+    const baseUrl = widgetBaseUrl(options);
     const parentOrigin =
       options.parentOrigin != null ? options.parentOrigin : global.location.origin;
     const embedUrl =
-      baseUrl +
-      "embed.html?autoOpen=1&parentOrigin=" +
-      encodeURIComponent(parentOrigin);
+      baseUrl + "embed.html?autoOpen=1&parentOrigin=" + encodeURIComponent(parentOrigin);
 
     const iframe = document.createElement("iframe");
     iframe.title = "Schedule C import";
@@ -63,6 +77,7 @@
 
     let overlay = null;
     let removeListener = null;
+    const embedOrigin = new URL(baseUrl).origin;
 
     function close() {
       if (removeListener) removeListener();
@@ -76,7 +91,7 @@
       if (ev.source !== iframe.contentWindow) return;
       const d = ev.data;
       if (!d || d.source !== WIDGET_SOURCE) return;
-      if (parentOrigin !== "*" && ev.origin !== new URL(baseUrl).origin) return;
+      if (parentOrigin !== "*" && ev.origin !== embedOrigin) return;
 
       if (d.type === "SCHEDULE_C_POPULATE") {
         options.onPopulate && options.onPopulate(d.payload);
@@ -92,8 +107,10 @@
     };
 
     overlay = createOverlay(iframe, close);
-    return { close: close };
+    return { close: close, embedUrl: embedUrl };
   };
+
+  ScheduleCWidget.baseUrl = WIDGET_BASE_URL;
 
   global.ScheduleCWidget = ScheduleCWidget;
 })(typeof window !== "undefined" ? window : globalThis);
