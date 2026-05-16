@@ -1,12 +1,12 @@
-name: Test, build, deploy to GitHub Pages
-
-# Assumes this repository root is the Vite app (this folder). In a monorepo,
-# set `defaults.run.working-directory` to this subfolder and use that path for
-# `upload-pages-artifact.path`.
+# Standalone repo: app at repository root (this folder).
+# Same layout as flores-finance/.github/workflows/pages.yml — split build/deploy,
+# upload-pages-artifact v4, verify via Vite bundle tags (no brittle /src/ greps).
+name: Test, build, deploy GitHub Pages
 
 on:
   push:
-    branches: [main]
+    branches: [main, master]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -18,21 +18,15 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: "22"
-          # Omit `cache: npm` until package-lock.json is committed (setup-node
-          # requires package-lock.json, npm-shrinkwrap.json, or yarn.lock).
+          # Use `cache: npm` after committing package-lock.json (see flores-finance).
 
       - name: Install
         run: npm install
@@ -45,21 +39,23 @@ jobs:
           VITE_BASE: /${{ github.event.repository.name }}/
         run: npm run build
 
-      - name: Verify Pages bundle (not source index.html)
+      - name: Verify static output
         run: |
-          if [ ! -f dist/index.html ]; then
-            echo "dist/index.html missing"; exit 1; fi
-          if grep -qE 'src/main\.tsx|/src/' dist/index.html; then
-            echo "dist/index.html still points at Vite dev sources — build did not run or wrong folder was deployed."
-            echo "Fix: GitHub → Settings → Pages → Build and deployment → Source: GitHub Actions (not \"Deploy from a branch\")."
-            echo "If this app lives inside a monorepo, the workflow file must be at REPO_ROOT/.github/workflows/ (see repo root workflow fish-eye-pages.yml)."
-            exit 1; fi
+          test -f dist/index.html
+          grep -q 'script type="module"' dist/index.html || (echo "dist/index.html missing Vite bundle tags" && exit 1)
+          ls -la dist/assets | head
 
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v4
         with:
           path: dist
+          include-hidden-files: true
 
-      - name: Deploy to GitHub Pages
-        id: deploy
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
         uses: actions/deploy-pages@v4

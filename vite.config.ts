@@ -5,12 +5,18 @@ import react from "@vitejs/plugin-react";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// GitHub project Pages serves from /<repo>/; set VITE_BASE in CI (see deploy.yml).
-const base = process.env.VITE_BASE ?? "/";
+/** GitHub project Pages: set VITE_BASE=/repo-name/ in CI (trailing slash normalized). */
+function viteBase(): string {
+  const raw = process.env.VITE_BASE?.trim();
+  if (!raw || raw === "." || raw === "./") return "/";
+  let b = raw.startsWith("/") ? raw : `/${raw}`;
+  if (!b.endsWith("/")) b = `${b}/`;
+  return b;
+}
 
 export default defineConfig({
   plugins: [react()],
-  base,
+  base: viteBase(),
   worker: {
     format: "es",
   },
