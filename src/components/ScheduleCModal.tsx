@@ -80,6 +80,16 @@ export function ScheduleCModal({
     setSource(null);
   }, []);
 
+  const isInHostIframe =
+    typeof window !== "undefined" && window.parent !== window;
+
+  const handleClose = useCallback(() => {
+    if (embedded || isInHostIframe) {
+      postCloseToParent(parentOrigin);
+    }
+    onClose();
+  }, [embedded, isInHostIframe, onClose, parentOrigin]);
+
   const handleFiles = useCallback(
     async (files: FileList | null) => {
       const file = files?.[0];
@@ -154,7 +164,7 @@ export function ScheduleCModal({
       className={`scm-overlay${embedded ? " scm-overlay--embedded" : ""}`}
       role="presentation"
     >
-      <div className="scm-backdrop" onClick={onClose} aria-hidden />
+      <div className="scm-backdrop" onClick={handleClose} aria-hidden />
       <div
         className="scm-dialog"
         role="dialog"
@@ -172,7 +182,7 @@ export function ScheduleCModal({
           <button
             type="button"
             className="scm-icon-btn"
-            onClick={onClose}
+            onClick={handleClose}
             aria-label="Close dialog"
           >
             <CloseIcon />
@@ -257,9 +267,8 @@ export function ScheduleCModal({
                     buildPopulatePayload(data, raw),
                     parentOrigin,
                   );
-                  postCloseToParent(parentOrigin);
                   reset();
-                  onClose();
+                  handleClose();
                 }}
               >
                 Done — close
