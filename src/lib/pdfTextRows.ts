@@ -1,4 +1,5 @@
 import type { ScheduleCLine } from "./acroFormMatch";
+import { extractLastGuardedAmountFromRow } from "./scheduleCAmountGuards";
 
 export type PdfTextItem = { str: string; x: number; y: number };
 
@@ -77,21 +78,13 @@ export function extractLineAmountFromRows(
   line: ScheduleCLine,
 ): string | undefined {
   const n = line;
+  const lineHint = new RegExp(`(?:^|\\s)${n}(?:[a-z])?(?:\\s|[.:])`, "i");
   for (const raw of rowStrings) {
     const row = raw.replace(/\u00a0/g, " ").trim();
     if (!row) continue;
-
-    const patterns: RegExp[] = [
-      new RegExp(`^${n}\\s*[a-z]?\\s*[:\\-.]?\\s*(.+)$`, "i"),
-      new RegExp(`\\b${n}\\s*[a-z]?\\s*[:\\-.]?\\s*(.+)$`, "i"),
-      new RegExp(`\\b${n}\\s*[a-z]?\\b\\s+([\\d$€£(),.\\-\\s]+)`, "i"),
-    ];
-    for (const re of patterns) {
-      const m = row.match(re);
-      if (!m?.[1]) continue;
-      const token = extractAmountToken(m[1]);
-      if (token) return token;
-    }
+    if (!lineHint.test(row) && !new RegExp(`^${n}\\b`).test(row)) continue;
+    const v = extractLastGuardedAmountFromRow(row, line);
+    if (v) return v;
   }
   return undefined;
 }

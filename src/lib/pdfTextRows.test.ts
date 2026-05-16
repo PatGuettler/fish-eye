@@ -29,6 +29,12 @@ describe("extractLineAmountFromRows", () => {
   it("handles line at start", () => {
     expect(extractLineAmountFromRows(["13: 9,999.00"], 13)).toBe("9,999.00");
   });
+
+  it("does not use 179 from section 179 when a larger amount exists", () => {
+    const row =
+      "13 Depreciation and section 179 expense deduction 179 12,345.00";
+    expect(extractLineAmountFromRows([row], 13)).toBe("12,345.00");
+  });
 });
 
 describe("extractAmountToken", () => {

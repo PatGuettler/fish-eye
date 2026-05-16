@@ -9,6 +9,10 @@ import {
   rowsToMergedStrings,
 } from "./pdfTextRows";
 import {
+  collectPageViewportItems,
+  parseAmountForLineFromPageItems,
+} from "./scheduleCLayoutExtract";
+import {
   normalizeExtractedScheduleC,
   type ScheduleCExtracted,
 } from "./scheduleCExtract";
@@ -54,51 +58,22 @@ async function collectAcroFormFieldsAsync(
   return map;
 }
 
-async function collectTextItems(
+async function extractViaLayout(
   pdf: pdfjs.PDFDocumentProxy,
-): Promise<PdfTextItem[]> {
-  const merged: PdfTextItem[] = [];
-  for (let i = 1; i <= pdf.numPages; i++) {
-    const page = await pdf.getPage(i);
-    const content = await page.getTextContent();
-    const viewport = page.getViewport({ scale: 1 });
-    for (const raw of content.items) {
-      const it = raw as { str?: string; transform?: number[] };
-      if (!it.str || !it.transform || it.transform.length < 6) continue;
-      const tx = it.transform[4];
-      const ty = it.transform[5];
-      const [vx, vy] = viewport.convertToViewportPoint(tx, ty);
-      merged.push({ str: it.str, x: vx, y: vy });
+): Promise<Partial<Record<ScheduleCLine, string>>> {
+  const out: Partial<Record<ScheduleCLine, string>> = {};
+  for (const line of [13, 30, 31] as const) {
+    for (let p = 1; p <= pdf.numPages; p++) {
+      const page = await pdf.getPage(p);
+      const { items, width } = await collectPageViewportItems(page);
+      const v = parseAmountForLineFromPageItems(items, width, line);
+      if (v !== undefined) {
+        out[line] = v;
+        break;
+      }
     }
   }
-  return merged;
-}
-
-function parseAmountNearLineLabels(
-  items: PdfTextItem[],
-  lineNum: ScheduleCLine,
-): string | undefined {
-  const label = new RegExp(`^${lineNum}\\b`);
-  const rows = items.filter((it) => label.test(it.str.trim()));
-  if (rows.length === 0) return undefined;
-  const anchor = rows.reduce((a, b) => (a.x < b.x ? a : b));
-  const rowY = anchor.y;
-  const tolerance = 8;
-  const amounts = items.filter((it) => {
-    if (Math.abs(it.y - rowY) > tolerance) return false;
-    if (it.x <= anchor.x + 2) return false;
-    const t = it.str.trim();
-    if (label.test(t)) return false;
-    const s = t.replace(/,/g, "").replace(/^\$/, "");
-    return (
-      /^-?\d*\.?\d+$/.test(s) ||
-      /^\(\s*[\d.]+\s*\)$/.test(t) ||
-      /^-\([\d.]+\)$/.test(t)
-    );
-  });
-  if (amounts.length === 0) return undefined;
-  amounts.sort((a, b) => b.x - a.x);
-  return amounts[0].str;
+  return out;
 }
 
 async function extractViaMergedRows(
@@ -114,9 +89,10 @@ async function extractViaMergedRows(
     for (const raw of content.items) {
       const it = raw as { str?: string; transform?: number[] };
       if (!it.str || !it.transform || it.transform.length < 6) continue;
-      const tx = it.transform[4];
-      const ty = it.transform[5];
-      const [vx, vy] = viewport.convertToViewportPoint(tx, ty);
+      const [vx, vy] = viewport.convertToViewportPoint(
+        it.transform[4],
+        it.transform[5],
+      );
       pageItems.push({ str: it.str, x: vx, y: vy });
     }
     const clusters = clusterItemsIntoRows(pageItems, 5);
@@ -124,18 +100,6 @@ async function extractViaMergedRows(
   }
   for (const line of [13, 30, 31] as const) {
     const v = extractLineAmountFromRows(rowStrings, line);
-    if (v !== undefined) out[line] = v;
-  }
-  return out;
-}
-
-async function extractViaLegacyHeuristic(
-  pdf: pdfjs.PDFDocumentProxy,
-): Promise<Partial<Record<ScheduleCLine, string>>> {
-  const items = await collectTextItems(pdf);
-  const out: Partial<Record<ScheduleCLine, string>> = {};
-  for (const line of [13, 30, 31] as const) {
-    const v = parseAmountNearLineLabels(items, line);
     if (v !== undefined) out[line] = v;
   }
   return out;
@@ -159,12 +123,12 @@ function pickRaw(
 
 function countNonemptyFromLayers(
   acro: Partial<Record<ScheduleCLine, string>>,
+  layout: Partial<Record<ScheduleCLine, string>>,
   merged: Partial<Record<ScheduleCLine, string>>,
-  legacy: Partial<Record<ScheduleCLine, string>>,
 ): number {
   let n = 0;
   for (const line of [13, 30, 31] as const) {
-    const v = pickRaw(line, acro, merged, legacy);
+    const v = pickRaw(line, acro, layout, merged);
     if (v !== undefined && v.trim() !== "") n++;
   }
   return n;
@@ -178,11 +142,11 @@ export async function parseScheduleCPdfBytes(
     const pdf = await pdfjs.getDocument({ data, useSystemFonts: true }).promise;
     const fields = await collectAcroFormFieldsAsync(pdf);
     const acro = findBestAcroValues(fields, 55);
+    const layout = await extractViaLayout(pdf);
     const merged = await extractViaMergedRows(pdf);
-    const legacy = await extractViaLegacyHeuristic(pdf);
 
     let ocr: Partial<Record<ScheduleCLine, string>> = {};
-    const preOcrCount = countNonemptyFromLayers(acro, merged, legacy);
+    const preOcrCount = countNonemptyFromLayers(acro, layout, merged);
     if (preOcrCount < 3 && typeof document !== "undefined") {
       try {
         const ocrLines = await ocrPdfToLineStrings(pdf);
@@ -192,9 +156,9 @@ export async function parseScheduleCPdfBytes(
       }
     }
 
-    const r13 = pickRaw(13, acro, merged, legacy, ocr);
-    const r30 = pickRaw(30, acro, merged, legacy, ocr);
-    const r31 = pickRaw(31, acro, merged, legacy, ocr);
+    const r13 = pickRaw(13, layout, acro, merged, ocr);
+    const r30 = pickRaw(30, layout, acro, merged, ocr);
+    const r31 = pickRaw(31, layout, acro, merged, ocr);
 
     const dataOut = normalizeExtractedScheduleC({
       box13Raw: r13,
@@ -204,8 +168,8 @@ export async function parseScheduleCPdfBytes(
 
     const sources: string[] = [];
     if ([13, 30, 31].some((l) => l in acro)) sources.push("acroform");
+    if ([13, 30, 31].some((l) => l in layout)) sources.push("layout");
     if ([13, 30, 31].some((l) => l in merged)) sources.push("text-rows");
-    if ([13, 30, 31].some((l) => l in legacy)) sources.push("text-heuristic");
     if ([13, 30, 31].some((l) => l in ocr)) sources.push("ocr");
     const source = sources.length > 0 ? sources.join("+") : "unknown";
 
