@@ -31,7 +31,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: npm
+          # Omit `cache: npm` until package-lock.json is committed (setup-node
+          # requires package-lock.json, npm-shrinkwrap.json, or yarn.lock).
 
       - name: Install
         run: npm install
