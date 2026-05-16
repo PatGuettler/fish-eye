@@ -49,9 +49,10 @@ jobs:
         run: |
           if [ ! -f dist/index.html ]; then
             echo "dist/index.html missing"; exit 1; fi
-          if grep -q 'src/main\.tsx' dist/index.html; then
-            echo "dist/index.html still points at dev entry — build did not run or wrong file copied."
-            echo "If you use GitHub Pages, set Source to GitHub Actions, not Deploy from a branch."
+          if grep -qE 'src/main\.tsx|/src/' dist/index.html; then
+            echo "dist/index.html still points at Vite dev sources — build did not run or wrong folder was deployed."
+            echo "Fix: GitHub → Settings → Pages → Build and deployment → Source: GitHub Actions (not \"Deploy from a branch\")."
+            echo "If this app lives inside a monorepo, the workflow file must be at REPO_ROOT/.github/workflows/ (see repo root workflow fish-eye-pages.yml)."
             exit 1; fi
 
       - name: Upload Pages artifact
