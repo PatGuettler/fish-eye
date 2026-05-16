@@ -7,6 +7,9 @@ function EmbedApp() {
   const [open, setOpen] = useState(false);
   return (
     <div className="embed-shell">
+      <p className="embed-shell__hint">
+        Widget runs here when embedded in your product.
+      </p>
       <button
         type="button"
         className="scm-btn primary"

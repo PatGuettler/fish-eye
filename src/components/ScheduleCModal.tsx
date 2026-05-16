@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   FORM_4562_MESSAGE,
   box13RequiresForm4562,
@@ -21,6 +21,39 @@ type Props = {
   onPopulate?: (payload: ScheduleCExtracted) => void;
 };
 
+function UploadIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M12 4v12m0 0l-4-4m4 4l4-4"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M4 17v1a2 2 0 002 2h12a2 2 0 002-2v-1"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function CloseIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M6 6l12 12M18 6L6 18"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 export function ScheduleCModal({
   open,
   onClose,
@@ -31,6 +64,8 @@ export function ScheduleCModal({
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<ScheduleCExtracted | null>(null);
   const [source, setSource] = useState<string | null>(null);
+  const [dragActive, setDragActive] = useState(false);
+  const dragDepth = useRef(0);
 
   const reset = useCallback(() => {
     setError(null);
@@ -75,6 +110,8 @@ export function ScheduleCModal({
   const onDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
+      dragDepth.current = 0;
+      setDragActive(false);
       void handleFiles(e.dataTransfer.files);
     },
     [handleFiles],
@@ -83,6 +120,21 @@ export function ScheduleCModal({
   const onDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = "copy";
+  }, []);
+
+  const onDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    dragDepth.current += 1;
+    setDragActive(true);
+  }, []);
+
+  const onDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    dragDepth.current -= 1;
+    if (dragDepth.current <= 0) {
+      dragDepth.current = 0;
+      setDragActive(false);
+    }
   }, []);
 
   if (!open) return null;
@@ -95,36 +147,56 @@ export function ScheduleCModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="scm-title"
+        aria-describedby="scm-desc"
       >
         <header className="scm-header">
-          <h1 id="scm-title">Upload Schedule C</h1>
+          <div className="scm-header__text">
+            <h1 id="scm-title">Upload Schedule C</h1>
+            <p id="scm-desc" className="scm-subtitle">
+              PDF stays in this browser — nothing is sent to a server.
+            </p>
+          </div>
           <button
             type="button"
             className="scm-icon-btn"
             onClick={onClose}
-            aria-label="Close"
+            aria-label="Close dialog"
           >
-            ×
+            <CloseIcon />
           </button>
         </header>
 
         <div
-          className="scm-dropzone"
+          className={`scm-dropzone${dragActive ? " scm-dropzone--active" : ""}`}
           onDrop={onDrop}
           onDragOver={onDragOver}
+          onDragEnter={onDragEnter}
+          onDragLeave={onDragLeave}
         >
-          <p>Drag and drop your Schedule C PDF here, or</p>
-          <label className="scm-file-label">
-            <input
-              type="file"
-              accept={ACCEPT}
-              className="scm-file-input"
-              disabled={busy}
-              onChange={(e) => void handleFiles(e.target.files)}
-            />
-            Choose file
-          </label>
-          {busy && <p className="scm-muted">Processing…</p>}
+          <div className="scm-dropzone__icon">
+            <UploadIcon />
+          </div>
+          <p className="scm-dropzone__title">Drop your Schedule C PDF</p>
+          <p className="scm-dropzone__hint">
+            or browse — fillable IRS forms work best.
+          </p>
+          <div className="scm-file-row">
+            <label className="scm-file-label">
+              <input
+                type="file"
+                accept={ACCEPT}
+                className="scm-file-input"
+                disabled={busy}
+                onChange={(e) => void handleFiles(e.target.files)}
+              />
+              Choose file
+            </label>
+          </div>
+          {busy && (
+            <div className="scm-spinner" role="status">
+              Parsing document…
+            </div>
+          )}
           {error && <p className="scm-error">{error}</p>}
         </div>
 
@@ -132,8 +204,8 @@ export function ScheduleCModal({
           <section className="scm-results" aria-live="polite">
             <h2>Parsed values</h2>
             <p className="scm-muted">
-              Source: {source}. Drag a chip into your portal if auto-fill did
-              not land on the right control.
+              Source: <strong>{source}</strong>. Drag a chip into your portal if
+              auto-fill missed a control.
             </p>
             <ul className="scm-chips">
               <li>
