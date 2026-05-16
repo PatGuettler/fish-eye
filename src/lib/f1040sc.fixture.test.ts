@@ -11,7 +11,7 @@ const PROJECT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const PDF_PATH = resolve(PROJECT_ROOT, "f1040sc.pdf");
 const WORKER_PATH = resolve(
   PROJECT_ROOT,
-  "node_modules/pdfjs-dist/build/pdf.worker.min.mjs",
+  "node_modules/pdfjs-dist/legacy/build/pdf.worker.min.mjs",
 );
 
 beforeAll(() => {

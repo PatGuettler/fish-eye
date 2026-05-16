@@ -1,3 +1,5 @@
+import { findIrsF1040scFieldValues } from "./irsF1040scFields";
+
 /**
  * Score PDF AcroForm field names against Schedule C line numbers (13, 30, 31).
  * IRS / preparer software uses many naming schemes; we prefer explicit f1_13[0] patterns.
@@ -94,6 +96,13 @@ export function extractScheduleCAcroValues(
   const out: Partial<Record<ScheduleCLine, string>> = {
     ...findBestAcroValues(fields, minScore),
   };
+
+  const irs = findIrsF1040scFieldValues(fields);
+  for (const line of LINES) {
+    const v = irs[line];
+    if (v !== undefined && String(v).trim() !== "") out[line] = v;
+  }
+
   for (const line of LINES) {
     const cur = out[line];
     const hasVal = cur !== undefined && String(cur).trim() !== "";

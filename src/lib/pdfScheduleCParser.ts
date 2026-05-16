@@ -33,7 +33,7 @@ function configureWorker(): void {
   }
   /** Node / Vitest when worker was not preset (e.g. future SSR use). */
   pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-    "../../node_modules/pdfjs-dist/build/pdf.worker.min.mjs",
+    "../../node_modules/pdfjs-dist/legacy/build/pdf.worker.min.mjs",
     import.meta.url,
   ).href;
 }
@@ -61,7 +61,14 @@ async function collectAcroFormFieldsAsync(
           : String(fieldValue);
       map.set(fieldName, v);
       const short = fieldName.split(/[[\].]/).pop();
-      if (short && short !== fieldName) map.set(short, v);
+      if (
+        short &&
+        short !== fieldName &&
+        !/^\d+$/.test(short) &&
+        short.length > 1
+      ) {
+        map.set(short, v);
+      }
     }
   }
   return map;

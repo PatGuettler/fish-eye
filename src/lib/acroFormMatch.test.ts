@@ -50,6 +50,20 @@ describe("findBestAcroValues", () => {
 });
 
 describe("extractScheduleCAcroValues", () => {
+  it("prefers IRS f1040sc field ids (f1_22 = line 13) over empty f1_13", () => {
+    const m = new Map<string, string>([
+      ["topmostSubform[0].Page1[0].f1_13[0]", ""],
+      ["topmostSubform[0].Page1[0].Lines8-17[0].f1_22[0]", "You 13"],
+      ["topmostSubform[0].Page1[0].f1_45[0]", "you 30"],
+      ["topmostSubform[0].Page1[0].f1_46[0]", "you 31"],
+    ]);
+    expect(extractScheduleCAcroValues(m)).toEqual({
+      13: "You 13",
+      30: "you 30",
+      31: "you 31",
+    });
+  });
+
   it("uses IRS-style suffix fallback when scores are below minScore", () => {
     const m = new Map<string, string>([
       ["topmostSubform[0].Page1[0].Table_Line13[0].Row1[0].f1_13[0]", "You 13"],
