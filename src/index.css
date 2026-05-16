@@ -171,6 +171,21 @@ code {
   color: var(--zinc-400);
 }
 
+.app-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-top: 1.35rem;
+  align-items: center;
+}
+
+.app-hero__actions .scm-btn {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .app-grid {
   display: grid;
   gap: 1.25rem;
@@ -311,6 +326,25 @@ code {
   text-align: center;
   max-width: 280px;
   line-height: 1.5;
+}
+
+.embed-shell__links {
+  margin: 1rem 0 0;
+  font-size: 0.8rem;
+  text-align: center;
+  max-width: 320px;
+  line-height: 1.5;
+  color: var(--zinc-500);
+}
+
+.embed-shell__pdf-link {
+  color: var(--indigo-400);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.embed-shell__pdf-link:hover {
+  text-decoration: underline;
 }
 
 .scm-muted {
@@ -668,6 +702,30 @@ code {
 .scm-btn.primary:hover {
   filter: brightness(1.05);
   border: none;
+}
+
+.scm-btn--ghost {
+  background: rgba(39, 39, 42, 0.6);
+  border-color: var(--zinc-600);
+  color: var(--zinc-100);
+}
+
+.scm-btn--ghost:hover {
+  border-color: var(--indigo-500);
+  color: var(--zinc-100);
+}
+
+.scm-btn--link {
+  border-color: transparent;
+  background: transparent;
+  color: var(--indigo-400);
+  box-shadow: none;
+}
+
+.scm-btn--link:hover {
+  border-color: transparent;
+  background: rgba(99, 102, 241, 0.12);
+  color: var(--indigo-400);
 }
 
 .scm-btn:disabled {

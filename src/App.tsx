@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import { ScheduleCModal } from "./components/ScheduleCModal";
 import {
+  IRS_SCHEDULE_C_ABOUT,
+  IRS_SCHEDULE_C_PDF,
+} from "./constants/irsScheduleC";
+import {
   MESSAGE_SOURCE,
   type ScheduleCPopulatePayload,
 } from "./integration/parentBridge";
@@ -71,6 +75,25 @@ export default function App() {
             <code>parentBridge.ts</code>) and always validate{" "}
             <code>ev.origin</code> in production.
           </p>
+          <div className="app-hero__actions">
+            <a
+              className="scm-btn scm-btn--ghost"
+              href={IRS_SCHEDULE_C_PDF}
+              target="_blank"
+              rel="noopener noreferrer"
+              download="f1040sc.pdf"
+            >
+              Download latest Schedule C (PDF)
+            </a>
+            <a
+              className="scm-btn scm-btn--link"
+              href={IRS_SCHEDULE_C_ABOUT}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              About Schedule C — IRS
+            </a>
+          </div>
         </header>
 
         <div className="app-grid">
