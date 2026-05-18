@@ -1,18 +1,24 @@
-import { describe, expect, it } from "vitest";
+// @vitest-environment node
+import { beforeAll, describe, expect, it } from "vitest";
 import { findIrsF1040scFieldValues } from "./irsF1040scFields";
+import { collectAcroFormFieldsFromPdf } from "./pdfScheduleCParser";
+import {
+  F1040SC_EXPECTED_RAW,
+  configurePdfWorker,
+  openF1040scPdf,
+} from "../test/pdfFixture";
 
-describe("findIrsF1040scFieldValues", () => {
-  it("maps f1_22 to line 13 and f1_45/f1_46 to lines 30/31", () => {
-    const m = new Map<string, string>([
-      ["topmostSubform[0].Page1[0].f1_13[0]", ""],
-      ["topmostSubform[0].Page1[0].Lines8-17[0].f1_22[0]", "You 13"],
-      ["topmostSubform[0].Page1[0].f1_45[0]", "you 30"],
-      ["topmostSubform[0].Page1[0].f1_46[0]", "you 31"],
-    ]);
-    expect(findIrsF1040scFieldValues(m)).toEqual({
-      13: "You 13",
-      30: "you 30",
-      31: "you 31",
+beforeAll(() => {
+  configurePdfWorker();
+});
+
+describe("findIrsF1040scFieldValues (f1040sc.pdf)", () => {
+  it("maps official IRS widget ids to lines 13, 30, 31", async () => {
+    const fields = await collectAcroFormFieldsFromPdf(await openF1040scPdf());
+    expect(findIrsF1040scFieldValues(fields)).toEqual({
+      13: F1040SC_EXPECTED_RAW.box13,
+      30: F1040SC_EXPECTED_RAW.box30,
+      31: F1040SC_EXPECTED_RAW.box31,
     });
   });
 });

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { F1040SC_EXPECTED_RAW } from "../test/pdfFixture";
 import {
   FORM_4562_MESSAGE,
   box13RequiresForm4562,
@@ -59,6 +60,16 @@ describe("normalizeExtractedScheduleC", () => {
         box31Raw: "(100)",
       }),
     ).toEqual({ box13: 0, box30: 0, box31: -100 });
+  });
+
+  it("normalizes f1040sc fixture raw strings", () => {
+    expect(
+      normalizeExtractedScheduleC({
+        box13Raw: F1040SC_EXPECTED_RAW.box13,
+        box30Raw: F1040SC_EXPECTED_RAW.box30,
+        box31Raw: F1040SC_EXPECTED_RAW.box31,
+      }),
+    ).toEqual({ box13: 0, box30: 0, box31: 0 });
   });
 });
 

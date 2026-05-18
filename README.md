@@ -71,7 +71,7 @@ Message types (source: `schedule-c-poc-widget`):
 | `npm run dev` | Local dev server |
 | `npm run build` | Production build to `dist/` |
 | `npm run preview` | Preview production build |
-| `npm test` | Unit tests (includes `f1040sc.pdf` fixture when present at repo root) |
+| `npm test` | Unit tests (requires `f1040sc.pdf` at repo root — parses the real PDF, no mocks) |
 | `npm run typecheck` | TypeScript check |
 
 **GitHub Pages:** In repository **Settings → Pages → Build and deployment**, set the source to **GitHub Actions** (not “Deploy from a branch”). Branch deploy serves raw source files; the app needs the Vite build in `dist/` (bundled JS, correct `/fish-eye/` asset paths).

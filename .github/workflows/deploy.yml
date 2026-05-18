@@ -32,7 +32,9 @@ jobs:
         run: npm install
 
       - name: Unit tests
-        run: npm test
+        run: |
+          test -f f1040sc.pdf || (echo "Missing f1040sc.pdf at repo root (required for tests)" && exit 1)
+          npm test
 
       - name: Set Pages base path
         run: |

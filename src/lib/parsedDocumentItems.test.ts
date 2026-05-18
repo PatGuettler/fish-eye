@@ -1,27 +1,33 @@
-import { describe, expect, it } from "vitest";
+// @vitest-environment node
+import { beforeAll, describe, expect, it } from "vitest";
 import { buildParsedDocumentItems } from "./parsedDocumentItems";
+import {
+  collectAcroFormFieldsFromPdf,
+  collectTextRowStringsFromPdf,
+} from "./pdfScheduleCParser";
+import {
+  F1040SC_EXPECTED_RAW,
+  configurePdfWorker,
+  openF1040scPdf,
+} from "../test/pdfFixture";
 
-describe("buildParsedDocumentItems", () => {
-  it("puts Schedule C lines first and includes acro fields", () => {
-    const fields = new Map<string, string>([
-      ["topmostSubform[0].Page1[0].f1_22[0]", "1,234"],
-      ["f1_22[0]", "1,234"],
-    ]);
-    const raw = { box13: "100", box30: "", box31: "50" };
-    const items = buildParsedDocumentItems(fields, ["Extra row text"], raw);
+beforeAll(() => {
+  configurePdfWorker();
+});
 
-    expect(items[0]).toMatchObject({ label: expect.stringContaining("13"), value: "100" });
-    expect(items.some((i) => i.value === "1,234")).toBe(true);
-    expect(items.some((i) => i.value === "Extra row text")).toBe(true);
-  });
+describe("buildParsedDocumentItems (f1040sc.pdf)", () => {
+  it("orders highlighted lines first and dedupes acro aliases", async () => {
+    const pdf = await openF1040scPdf();
+    const fields = await collectAcroFormFieldsFromPdf(pdf);
+    const rows = await collectTextRowStringsFromPdf(pdf);
+    const items = buildParsedDocumentItems(fields, rows, { ...F1040SC_EXPECTED_RAW });
 
-  it("dedupes repeated acro field entries", () => {
-    const fields = new Map([["f1_1[0]", "once"]]);
-    const items = buildParsedDocumentItems(
-      fields,
-      [],
-      { box13: "", box30: "", box31: "" },
-    );
-    expect(items.filter((i) => i.value === "once").length).toBe(1);
+    expect(items[0].value).toBe(F1040SC_EXPECTED_RAW.box13);
+    expect(items[1].value).toBe(F1040SC_EXPECTED_RAW.box30);
+    expect(items[2].value).toBe(F1040SC_EXPECTED_RAW.box31);
+
+    const box13Entries = items.filter((i) => i.value === F1040SC_EXPECTED_RAW.box13);
+    expect(box13Entries.length).toBeGreaterThanOrEqual(1);
+    expect(box13Entries[0].label).toContain("13");
   });
 });

@@ -50,7 +50,7 @@ function configureWorker(): void {
 
 type FieldMap = Map<string, string>;
 
-async function collectAcroFormFieldsAsync(
+export async function collectAcroFormFieldsFromPdf(
   pdf: pdfjs.PDFDocumentProxy,
 ): Promise<FieldMap> {
   const map = new Map<string, string>();
@@ -102,7 +102,7 @@ async function extractViaLayout(
   return out;
 }
 
-async function collectMergedRowStrings(
+export async function collectTextRowStringsFromPdf(
   pdf: pdfjs.PDFDocumentProxy,
 ): Promise<string[]> {
   const rowStrings: string[] = [];
@@ -131,7 +131,7 @@ async function extractViaMergedRows(
   rowStrings?: string[],
 ): Promise<Partial<Record<ScheduleCLine, string>>> {
   const out: Partial<Record<ScheduleCLine, string>> = {};
-  const rows = rowStrings ?? (await collectMergedRowStrings(pdf));
+  const rows = rowStrings ?? (await collectTextRowStringsFromPdf(pdf));
   for (const line of [13, 30, 31] as const) {
     const v = extractLineAmountFromRows(rows, line);
     if (v !== undefined) out[line] = v;
@@ -168,14 +168,22 @@ function countNonemptyFromLayers(
   return n;
 }
 
+function cloneArrayBuffer(data: ArrayBuffer): ArrayBuffer {
+  const copy = new ArrayBuffer(data.byteLength);
+  new Uint8Array(copy).set(new Uint8Array(data));
+  return copy;
+}
+
 export async function parseScheduleCPdfBytes(
   data: ArrayBuffer,
 ): Promise<ParseScheduleCResult> {
   try {
     configureWorker();
-    const pdf = await pdfjs.getDocument({ data, useSystemFonts: true }).promise;
-    const fields = await collectAcroFormFieldsAsync(pdf);
-    const rowStrings = await collectMergedRowStrings(pdf);
+    const pdf = await pdfjs
+      .getDocument({ data: cloneArrayBuffer(data), useSystemFonts: true })
+      .promise;
+    const fields = await collectAcroFormFieldsFromPdf(pdf);
+    const rowStrings = await collectTextRowStringsFromPdf(pdf);
     const acro = extractScheduleCAcroValues(fields);
     const layout = await extractViaLayout(pdf);
     const merged = await extractViaMergedRows(pdf, rowStrings);
