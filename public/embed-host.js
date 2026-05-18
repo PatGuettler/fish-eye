@@ -172,6 +172,70 @@
    * @param {Element|string} container
    * @param {{ items?: Array<{id:string,label:string,value:string}>, source?: string }} data
    */
+  function filterParsedItems(items, query) {
+    var q = String(query || "")
+      .trim()
+      .toLowerCase();
+    if (!q) return items;
+    return items.filter(function (item) {
+      return (
+        item.label.toLowerCase().indexOf(q) !== -1 ||
+        item.value.toLowerCase().indexOf(q) !== -1
+      );
+    });
+  }
+
+  function updateParsedHeading(heading, shown, total) {
+    if (shown === total) {
+      heading.textContent = "Parsed document (" + total + ")";
+    } else {
+      heading.textContent =
+        "Parsed document (" + shown + " of " + total + ")";
+    }
+  }
+
+  function appendParsedChip(list, item) {
+    var li = document.createElement("li");
+    var chip = document.createElement("span");
+    chip.className = "host-chip";
+    chip.draggable = true;
+    chip.setAttribute("role", "button");
+    chip.tabIndex = 0;
+    chip.title = "Drag into a field on this page, or click to copy";
+
+    var label = document.createElement("span");
+    label.className = "host-chip__label";
+    label.textContent = item.label;
+
+    var value = document.createElement("span");
+    value.className = "host-chip__value";
+    value.textContent = item.value;
+
+    chip.appendChild(label);
+    chip.appendChild(value);
+
+    chip.addEventListener("dragstart", function (e) {
+      e.dataTransfer.setData("text/plain", item.value);
+      e.dataTransfer.effectAllowed = "copy";
+    });
+    chip.addEventListener("click", function () {
+      if (global.navigator && global.navigator.clipboard) {
+        void global.navigator.clipboard.writeText(item.value);
+      }
+    });
+    chip.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        if (global.navigator && global.navigator.clipboard) {
+          void global.navigator.clipboard.writeText(item.value);
+        }
+      }
+    });
+
+    li.appendChild(chip);
+    list.appendChild(li);
+  }
+
   ScheduleCWidget.renderParsedChips = function renderParsedChips(container, data) {
     var root =
       typeof container === "string"
@@ -192,60 +256,43 @@
 
     var heading = document.createElement("p");
     heading.className = "host-chips__heading";
-    heading.textContent = "Parsed document (" + items.length + ")";
+    updateParsedHeading(heading, items.length, items.length);
 
     var hint = document.createElement("p");
     hint.className = "host-chips__hint";
     hint.textContent = source
       ? "Source: " +
         source +
-        ". Drag onto any field on this page, or click a chip to copy."
-      : "Drag onto any field on this page, or click a chip to copy.";
+        ". Drag onto any field on this page, or click a row to copy."
+      : "Drag onto any field on this page, or click a row to copy.";
+
+    var search = document.createElement("input");
+    search.type = "search";
+    search.className = "host-chips__search";
+    search.setAttribute("aria-label", "Search parsed document values");
+    search.placeholder = "Search labels or values…";
+    search.autocomplete = "off";
+
+    var empty = document.createElement("p");
+    empty.className = "host-chips__empty";
+    empty.hidden = true;
+    empty.textContent = "No values match your search.";
 
     var list = document.createElement("ul");
     list.className = "host-chips__list";
 
-    items.forEach(function (item) {
-      var li = document.createElement("li");
-      var chip = document.createElement("span");
-      chip.className = "host-chip";
-      chip.draggable = true;
-      chip.setAttribute("role", "button");
-      chip.tabIndex = 0;
-      chip.title = "Drag into a field on this page, or click to copy";
-
-      var label = document.createElement("span");
-      label.className = "host-chip__label";
-      label.textContent = item.label;
-
-      var value = document.createElement("span");
-      value.className = "host-chip__value";
-      value.textContent = item.value;
-
-      chip.appendChild(label);
-      chip.appendChild(value);
-
-      chip.addEventListener("dragstart", function (e) {
-        e.dataTransfer.setData("text/plain", item.value);
-        e.dataTransfer.effectAllowed = "copy";
+    function paintList() {
+      var filtered = filterParsedItems(items, search.value);
+      list.innerHTML = "";
+      updateParsedHeading(heading, filtered.length, items.length);
+      empty.hidden = filtered.length > 0;
+      filtered.forEach(function (item) {
+        appendParsedChip(list, item);
       });
-      chip.addEventListener("click", function () {
-        if (global.navigator && global.navigator.clipboard) {
-          void global.navigator.clipboard.writeText(item.value);
-        }
-      });
-      chip.addEventListener("keydown", function (e) {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          if (global.navigator && global.navigator.clipboard) {
-            void global.navigator.clipboard.writeText(item.value);
-          }
-        }
-      });
+    }
 
-      li.appendChild(chip);
-      list.appendChild(li);
-    });
+    search.addEventListener("input", paintList);
+    paintList();
 
     var clearBtn = document.createElement("button");
     clearBtn.type = "button";
@@ -257,6 +304,8 @@
 
     root.appendChild(heading);
     root.appendChild(hint);
+    root.appendChild(search);
+    root.appendChild(empty);
     root.appendChild(list);
     root.appendChild(clearBtn);
   };

@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>fish-eye — deployment check</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        max-width: 40rem;
+        margin: 2rem auto;
+        padding: 0 1rem;
+        line-height: 1.5;
+      }
+      code {
+        background: #f3f4f6;
+        padding: 0.15rem 0.35rem;
+        border-radius: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Source files are being served — build required</h1>
+    <p>
+      If you see this page, GitHub Pages is publishing the repository root instead
+      of the Vite <code>dist/</code> output. The app cannot run until the
+      production build is deployed.
+    </p>
+    <ol>
+      <li>
+        Repository <strong>Settings → Pages → Build and deployment</strong>:
+        set source to <strong>GitHub Actions</strong> (not “Deploy from a branch”).
+      </li>
+      <li>
+        Push to <code>main</code> or <code>vibe-tha-vibe</code>, or run the
+        workflow “Test, build, deploy GitHub Pages” manually.
+      </li>
+      <li>
+        Open <code>https://&lt;user&gt;.github.io/fish-eye/</code> and confirm
+        the page source references <code>/fish-eye/assets/</code>, not
+        <code>/src/main.tsx</code>.
+      </li>
+    </ol>
+  </body>
+</html>

@@ -238,95 +238,6 @@
         display: block;
       }
 
-      .host-chips {
-        margin-top: 1rem;
-        padding-top: 0.85rem;
-        border-top: 1px solid rgba(129, 140, 248, 0.25);
-      }
-
-      .host-chips[hidden] {
-        display: none !important;
-      }
-
-      .host-chips__heading {
-        margin: 0 0 0.35rem;
-        font-size: 0.82rem;
-        font-weight: 700;
-        color: #c7d2fe;
-      }
-
-      .host-chips__hint {
-        margin: 0 0 0.65rem;
-        font-size: 0.72rem;
-        line-height: 1.45;
-        color: #a1a1aa;
-      }
-
-      .host-chips__list {
-        list-style: none;
-        margin: 0;
-        padding: 0;
-        max-height: min(280px, 42vh);
-        overflow-y: auto;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.4rem;
-        align-content: flex-start;
-      }
-
-      .host-chip {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.35rem;
-        max-width: 100%;
-        padding: 0.35rem 0.55rem;
-        border-radius: 999px;
-        border: 1px solid rgba(129, 140, 248, 0.45);
-        background: rgba(99, 102, 241, 0.18);
-        cursor: grab;
-        user-select: none;
-        font-size: 0.72rem;
-      }
-
-      .host-chip:active {
-        cursor: grabbing;
-      }
-
-      .host-chip__label {
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-        color: #a5b4fc;
-        flex-shrink: 0;
-      }
-
-      .host-chip__value {
-        font-weight: 600;
-        color: #f4f4f5;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-
-      .host-chips__clear {
-        display: block;
-        width: 100%;
-        margin-top: 0.65rem;
-        padding: 0.4rem 0.65rem;
-        border: 1px solid rgba(129, 140, 248, 0.35);
-        border-radius: 8px;
-        background: transparent;
-        color: #c7d2fe;
-        font: inherit;
-        font-size: 0.75rem;
-        font-weight: 600;
-        cursor: pointer;
-      }
-
-      .host-chips__clear:hover {
-        background: rgba(99, 102, 241, 0.12);
-      }
-
       .form-actions {
         display: flex;
         flex-wrap: wrap;
@@ -348,6 +259,7 @@
         background: #f3f4f6;
       }
     </style>
+    <link rel="stylesheet" href="./host-chips.css" />
   </head>
   <body>
     <div class="banner" role="note">

@@ -55,6 +55,7 @@ jobs:
           test -f dist/embed.html
           test -f dist/irs-demo.html
           test -f dist/embed-host.js
+          test -f dist/host-chips.css
           test -f dist/404.html
           grep -q 'embed-host.js' dist/irs-demo.html
           test -f dist/.nojekyll

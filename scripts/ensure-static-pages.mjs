@@ -1,7 +1,14 @@
 import { copyFileSync, existsSync } from "node:fs";
 
 /** Belt-and-suspenders: demo pages must exist in dist for GitHub Pages. */
-const pages = ["irs-demo.html", "host-example.html", "embed-host.js", "404.html"];
+const pages = [
+  "irs-demo.html",
+  "host-example.html",
+  "embed-host.js",
+  "host-chips.css",
+  "404.html",
+  "github-pages-check.html",
+];
 
 for (const name of pages) {
   const dest = `dist/${name}`;

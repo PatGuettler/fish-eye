@@ -22,6 +22,7 @@
         font-size: 1rem;
       }
     </style>
+    <link rel="stylesheet" href="./host-chips.css" />
   </head>
   <body>
     <h1>Your tax portal</h1>
@@ -44,12 +45,6 @@
     <div id="parsed-chips-host" class="host-chips" hidden style="margin-top:1rem"></div>
 
     <script src="./embed-host.js" defer></script>
-    <style>
-      .host-chips[hidden] { display: none !important; }
-      .host-chips__list { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.4rem; max-height: 240px; overflow-y: auto; }
-      .host-chip { display: inline-flex; gap: 0.35rem; padding: 0.35rem 0.55rem; border-radius: 999px; border: 1px solid #6366f1; background: #eef2ff; cursor: grab; font-size: 0.8rem; }
-      .host-chip__label { font-weight: 700; color: #4338ca; }
-    </style>
     <script>
       document.getElementById("import-btn").addEventListener("click", () => {
         ScheduleCWidget.open({

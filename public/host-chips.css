@@ -1,0 +1,141 @@
+/* fish-eye host panel — parsed value list (include on pages using embed-host.js) */
+
+.host-chips {
+  margin-top: 1rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid rgba(129, 140, 248, 0.25);
+}
+
+.host-chips[hidden] {
+  display: none !important;
+}
+
+.host-chips__heading {
+  margin: 0 0 0.35rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #c7d2fe;
+}
+
+.host-chips__hint {
+  margin: 0 0 0.5rem;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: #a1a1aa;
+}
+
+.host-chips__search {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0 0 0.65rem;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid rgba(129, 140, 248, 0.4);
+  border-radius: 8px;
+  background: rgba(15, 15, 18, 0.85);
+  color: #f4f4f5;
+  font: inherit;
+  font-size: 0.8rem;
+}
+
+.host-chips__search::placeholder {
+  color: #71717a;
+}
+
+.host-chips__search:focus {
+  outline: 2px solid #6366f1;
+  outline-offset: 1px;
+}
+
+.host-chips__empty {
+  margin: 0 0 0.65rem;
+  font-size: 0.75rem;
+  color: #a1a1aa;
+  font-style: italic;
+}
+
+.host-chips__empty[hidden] {
+  display: none;
+}
+
+.host-chips__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  overflow: visible;
+  max-height: none;
+}
+
+.host-chips__list li {
+  margin: 0;
+  padding: 0;
+}
+
+.host-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.2rem;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.5rem 0.65rem;
+  border-radius: 10px;
+  border: 1px solid rgba(129, 140, 248, 0.45);
+  background: rgba(99, 102, 241, 0.18);
+  cursor: grab;
+  user-select: none;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.host-chip:hover {
+  background: rgba(99, 102, 241, 0.26);
+  border-color: rgba(165, 180, 252, 0.55);
+}
+
+.host-chip:active {
+  cursor: grabbing;
+}
+
+.host-chip__label {
+  font-weight: 700;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #a5b4fc;
+  line-height: 1.35;
+}
+
+.host-chip__value {
+  font-weight: 600;
+  font-size: 0.82rem;
+  color: #f4f4f5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow: visible;
+  text-overflow: unset;
+}
+
+.host-chips__clear {
+  display: block;
+  width: 100%;
+  margin-top: 0.75rem;
+  padding: 0.4rem 0.65rem;
+  border: 1px solid rgba(129, 140, 248, 0.35);
+  border-radius: 8px;
+  background: transparent;
+  color: #c7d2fe;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.host-chips__clear:hover {
+  background: rgba(99, 102, 241, 0.12);
+}
