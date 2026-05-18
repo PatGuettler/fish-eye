@@ -26,8 +26,9 @@
   <body>
     <h1>Your tax portal</h1>
     <p>
-      This page shows how to embed the Schedule C popup on your site. Values
-      auto-fill when possible; you can still drag or paste into fields.
+      This page shows how to embed the Schedule C popup. Parsed values are never
+      written automatically — users drag chips onto your fields (or click to
+      copy).
     </p>
     <button type="button" id="import-btn">Import Schedule C</button>
 
@@ -45,25 +46,8 @@
       document.getElementById("import-btn").addEventListener("click", () => {
         ScheduleCWidget.open({
           baseUrl: ScheduleCWidget.baseUrl,
-          onPopulate(payload) {
-            const display = (n, raw) =>
-              raw && String(raw).trim() ? raw : String(n);
-            document.getElementById("box13").value = display(
-              payload.box13,
-              payload.raw?.box13,
-            );
-            document.getElementById("box30").value = display(
-              payload.box30,
-              payload.raw?.box30,
-            );
-            document.getElementById("box31").value = display(
-              payload.box31,
-              payload.raw?.box31,
-            );
-          },
         });
       });
     </script>
   </body>
 </html>
-

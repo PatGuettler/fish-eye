@@ -1,6 +1,6 @@
 # Schedule C import (fish-eye)
 
-Client-side widget that reads an IRS **Schedule C** PDF and surfaces **lines 13, 30, and 31** so users can copy or drag values into another site. PDFs are parsed entirely in the browser; nothing is uploaded to a server.
+Client-side widget that reads an IRS **Schedule C** PDF and surfaces parsed field values so users can drag them into any field on a host page (or copy to the clipboard). PDFs are parsed entirely in the browser; nothing is uploaded, stored, or sent to a server.
 
 **Live demo:** [https://patguettler.github.io/fish-eye/](https://patguettler.github.io/fish-eye/) (after GitHub Pages deploy)
 
@@ -45,16 +45,12 @@ Host the built app (for example on GitHub Pages) and load the popup helper from 
 ```javascript
 document.getElementById("import-schedule-c").addEventListener("click", () => {
   ScheduleCWidget.open({
-  // baseUrl: "https://patguettler.github.io/fish-eye/", // optional; defaults to script directory
-    onPopulate(payload) {
-      // payload: { box13, box30, box31, raw?: { box13, box30, box31 } }
-      document.querySelector('[data-field="scheduleC.box13"]').value =
-        payload.raw?.box13?.trim() || String(payload.box13);
-      // … map box30, box31 similarly
-    },
+    // baseUrl: "https://patguettler.github.io/fish-eye/", // optional; defaults to script directory
   });
 });
 ```
+
+The host script bridges drag-and-drop from the iframe onto any `input`, `textarea`, or `select` on your page. **Values are never auto-filled** — users choose where each parsed value goes.
 
 A fuller example with sample form fields is in [public/host-example.html](public/host-example.html).
 
@@ -64,7 +60,7 @@ Message types (source: `schedule-c-poc-widget`):
 
 | Type | Meaning |
 |------|---------|
-| `SCHEDULE_C_POPULATE` | Parsed values in `payload` |
+| `FISH_EYE_DRAG_START` | User began dragging a parsed value (handled by `embed-host.js`) |
 | `SCHEDULE_C_CLOSE` | User closed the widget |
 
 ## Development

@@ -2,14 +2,13 @@ import { useCallback, useRef, useState } from "react";
 import {
   FORM_4562_MESSAGE,
   box13RequiresForm4562,
-  type ScheduleCBoxRaw,
-  type ScheduleCExtracted,
 } from "../lib/scheduleCExtract";
+import type { ParsedDocumentItem } from "../lib/parsedDocumentItems";
 import { parseScheduleCPdfBytes } from "../lib/pdfScheduleCParser";
 import {
-  buildPopulatePayload,
+  needsCrossFrameDrag,
   postCloseToParent,
-  postPopulateToParent,
+  postDragStartToParent,
 } from "../integration/parentBridge";
 
 const ACCEPT = "application/pdf";
@@ -21,8 +20,6 @@ type Props = {
   parentOrigin?: string;
   /** Loaded inside an iframe on a host site (embed.html). */
   embedded?: boolean;
-  /** Same-window host (standalone) — iframe hosts rely on postMessage instead. */
-  onPopulate?: (payload: ScheduleCExtracted) => void;
 };
 
 function UploadIcon() {
@@ -63,69 +60,57 @@ export function ScheduleCModal({
   onClose,
   parentOrigin = "*",
   embedded = false,
-  onPopulate,
 }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [data, setData] = useState<ScheduleCExtracted | null>(null);
-  const [raw, setRaw] = useState<ScheduleCBoxRaw | null>(null);
+  const [items, setItems] = useState<ParsedDocumentItem[]>([]);
   const [source, setSource] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const dragDepth = useRef(0);
 
+  const crossFrameDrag = embedded || needsCrossFrameDrag();
+
   const reset = useCallback(() => {
     setError(null);
-    setData(null);
-    setRaw(null);
+    setItems([]);
     setSource(null);
   }, []);
 
-  const isInHostIframe =
-    typeof window !== "undefined" && window.parent !== window;
-
   const handleClose = useCallback(() => {
-    if (embedded || isInHostIframe) {
+    if (embedded || needsCrossFrameDrag()) {
       postCloseToParent(parentOrigin);
     }
     onClose();
-  }, [embedded, isInHostIframe, onClose, parentOrigin]);
+  }, [embedded, onClose, parentOrigin]);
 
-  const handleFiles = useCallback(
-    async (files: FileList | null) => {
-      const file = files?.[0];
-      if (!file) return;
-      if (file.type && file.type !== ACCEPT) {
-        setError("Please upload a PDF file.");
+  const handleFiles = useCallback(async (files: FileList | null) => {
+    const file = files?.[0];
+    if (!file) return;
+    if (file.type && file.type !== ACCEPT) {
+      setError("Please upload a PDF file.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    setItems([]);
+    try {
+      const buf = await file.arrayBuffer();
+      const result = await parseScheduleCPdfBytes(buf);
+      if (!result.ok) {
+        setError(result.error);
         return;
       }
-      setBusy(true);
-      setError(null);
-      setData(null);
-      setRaw(null);
-      try {
-        const buf = await file.arrayBuffer();
-        const result = await parseScheduleCPdfBytes(buf);
-        if (!result.ok) {
-          setError(result.error);
-          return;
-        }
-        setData(result.data);
-        setRaw(result.raw);
-        setSource(result.source);
-        if (box13RequiresForm4562(result.data.box13)) {
-          window.alert(FORM_4562_MESSAGE);
-        }
-        const payload = buildPopulatePayload(result.data, result.raw);
-        onPopulate?.(result.data);
-        postPopulateToParent(payload, parentOrigin);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
-      } finally {
-        setBusy(false);
+      setItems(result.items);
+      setSource(result.source);
+      if (box13RequiresForm4562(result.data.box13)) {
+        window.alert(FORM_4562_MESSAGE);
       }
-    },
-    [onPopulate, parentOrigin],
-  );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  }, []);
 
   const onDrop = useCallback(
     (e: React.DragEvent) => {
@@ -165,7 +150,7 @@ export function ScheduleCModal({
       role="presentation"
     >
       <div className="scm-backdrop" onClick={handleClose} aria-hidden />
-      <div
+      <section
         className="scm-dialog"
         role="dialog"
         aria-modal="true"
@@ -173,12 +158,13 @@ export function ScheduleCModal({
         aria-describedby="scm-desc"
       >
         <header className="scm-header">
-          <div className="scm-header__text">
+          <section className="scm-header__text">
             <h1 id="scm-title">Upload Schedule C</h1>
             <p id="scm-desc" className="scm-subtitle">
-              PDF stays in this browser — nothing is sent to a server.
+              PDF stays in this browser only — nothing is saved or sent to a
+              server.
             </p>
-          </div>
+          </section>
           <button
             type="button"
             className="scm-icon-btn"
@@ -189,21 +175,21 @@ export function ScheduleCModal({
           </button>
         </header>
 
-        <div
+        <section
           className={`scm-dropzone${dragActive ? " scm-dropzone--active" : ""}`}
           onDrop={onDrop}
           onDragOver={onDragOver}
           onDragEnter={onDragEnter}
           onDragLeave={onDragLeave}
         >
-          <div className="scm-dropzone__icon">
+          <section className="scm-dropzone__icon">
             <UploadIcon />
-          </div>
+          </section>
           <p className="scm-dropzone__title">Drop your Schedule C PDF</p>
           <p className="scm-dropzone__hint">
             or browse — fillable IRS forms work best.
           </p>
-          <div className="scm-file-row">
+          <section className="scm-file-row">
             <label className="scm-file-label">
               <input
                 type="file"
@@ -214,59 +200,47 @@ export function ScheduleCModal({
               />
               Choose file
             </label>
-          </div>
+          </section>
           {busy && (
-            <div className="scm-spinner-wrap" role="status">
-              <div className="scm-spinner" />
-              <div>
+            <section className="scm-spinner-wrap" role="status">
+              <span className="scm-spinner" aria-hidden />
+              <section>
                 <p className="scm-spinner-title">Parsing…</p>
                 <p className="scm-spinner-hint">
                   Scanned PDFs use in-browser OCR (first run may take ~30–60s).
                 </p>
-              </div>
-            </div>
+              </section>
+            </section>
           )}
           {error && <p className="scm-error">{error}</p>}
-        </div>
+        </section>
 
-        {data && (
+        {items.length > 0 && (
           <section className="scm-results" aria-live="polite">
-            <h2>Parsed values</h2>
+            <h2>Parsed document ({items.length})</h2>
             <p className="scm-muted">
               Source: <strong>{source}</strong>.{" "}
-              {embedded
-                ? "Drag a chip into a field on your site, or click to copy."
-                : "Drag a chip into your form, or click to copy."}
+              {crossFrameDrag
+                ? "Press and drag a value onto any field on your page. Nothing is filled automatically."
+                : "Drag a value into a field on this page, or click to copy."}
             </p>
-            <ul className="scm-chips">
-              <li>
-                <DraggableChip
-                  label="Box 13"
-                  value={chipDisplay(raw, data, "box13")}
-                />
-              </li>
-              <li>
-                <DraggableChip
-                  label="Box 30"
-                  value={chipDisplay(raw, data, "box30")}
-                />
-              </li>
-              <li>
-                <DraggableChip
-                  label="Box 31"
-                  value={chipDisplay(raw, data, "box31")}
-                />
-              </li>
+            <ul className="scm-chips scm-chips--scroll">
+              {items.map((item) => (
+                <li key={item.id}>
+                  <DraggableChip
+                    label={item.label}
+                    value={item.value}
+                    crossFrameDrag={crossFrameDrag}
+                    parentOrigin={parentOrigin}
+                  />
+                </li>
+              ))}
             </ul>
-            <div className="scm-actions">
+            <section className="scm-actions">
               <button
                 type="button"
                 className="scm-btn primary"
                 onClick={() => {
-                  postPopulateToParent(
-                    buildPopulatePayload(data, raw),
-                    parentOrigin,
-                  );
                   reset();
                   handleClose();
                 }}
@@ -276,43 +250,60 @@ export function ScheduleCModal({
               <button type="button" className="scm-btn" onClick={reset}>
                 Clear
               </button>
-            </div>
+            </section>
           </section>
         )}
-      </div>
+      </section>
     </div>
   );
 }
 
-function chipDisplay(
-  raw: ScheduleCBoxRaw | null,
-  data: ScheduleCExtracted,
-  key: keyof ScheduleCBoxRaw,
-): string {
-  const full = raw?.[key];
-  if (full != null && full.trim() !== "") return full;
-  return String(data[key]);
-}
+function DraggableChip({
+  label,
+  value,
+  crossFrameDrag,
+  parentOrigin,
+}: {
+  label: string;
+  value: string;
+  crossFrameDrag: boolean;
+  parentOrigin: string;
+}) {
+  const onCopy = () => void navigator.clipboard?.writeText(value);
 
-function DraggableChip({ label, value }: { label: string; value: string }) {
+  const onPointerDown = (e: React.PointerEvent) => {
+    if (!crossFrameDrag || e.button !== 0) return;
+    e.preventDefault();
+    postDragStartToParent(value, e.clientX, e.clientY, parentOrigin);
+  };
+
   return (
     <span
-      className="scm-chip"
-      draggable
+      className={`scm-chip${crossFrameDrag ? " scm-chip--bridge" : ""}`}
+      draggable={!crossFrameDrag}
       role="button"
       tabIndex={0}
-      onClick={() => void navigator.clipboard?.writeText(value)}
+      onClick={onCopy}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          void navigator.clipboard?.writeText(value);
+          onCopy();
         }
       }}
+      onPointerDown={onPointerDown}
       onDragStart={(e) => {
+        if (crossFrameDrag) {
+          e.preventDefault();
+          return;
+        }
         e.dataTransfer.setData("text/plain", value);
         e.dataTransfer.effectAllowed = "copy";
       }}
-      title={`Drag or click to copy ${label}`}
+      title={
+        crossFrameDrag
+          ? `Drag onto a field on your page, or click to copy`
+          : `Drag or click to copy`
+      }
     >
       <span className="scm-chip-label">{label}</span>
       <span className="scm-chip-value">{value}</span>

@@ -13,13 +13,23 @@ import {
   parseAmountForLineFromPageItems,
 } from "./scheduleCLayoutExtract";
 import {
+  buildParsedDocumentItems,
+  type ParsedDocumentItem,
+} from "./parsedDocumentItems";
+import {
   normalizeExtractedScheduleC,
   type ScheduleCBoxRaw,
   type ScheduleCExtracted,
 } from "./scheduleCExtract";
 
 export type ParseScheduleCResult =
-  | { ok: true; data: ScheduleCExtracted; raw: ScheduleCBoxRaw; source: string }
+  | {
+      ok: true;
+      data: ScheduleCExtracted;
+      raw: ScheduleCBoxRaw;
+      source: string;
+      items: ParsedDocumentItem[];
+    }
   | { ok: false; error: string };
 
 function configureWorker(): void {
@@ -92,10 +102,9 @@ async function extractViaLayout(
   return out;
 }
 
-async function extractViaMergedRows(
+async function collectMergedRowStrings(
   pdf: pdfjs.PDFDocumentProxy,
-): Promise<Partial<Record<ScheduleCLine, string>>> {
-  const out: Partial<Record<ScheduleCLine, string>> = {};
+): Promise<string[]> {
   const rowStrings: string[] = [];
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
@@ -114,8 +123,17 @@ async function extractViaMergedRows(
     const clusters = clusterItemsIntoRows(pageItems, 5);
     rowStrings.push(...rowsToMergedStrings(clusters));
   }
+  return rowStrings;
+}
+
+async function extractViaMergedRows(
+  pdf: pdfjs.PDFDocumentProxy,
+  rowStrings?: string[],
+): Promise<Partial<Record<ScheduleCLine, string>>> {
+  const out: Partial<Record<ScheduleCLine, string>> = {};
+  const rows = rowStrings ?? (await collectMergedRowStrings(pdf));
   for (const line of [13, 30, 31] as const) {
-    const v = extractLineAmountFromRows(rowStrings, line);
+    const v = extractLineAmountFromRows(rows, line);
     if (v !== undefined) out[line] = v;
   }
   return out;
@@ -157,9 +175,10 @@ export async function parseScheduleCPdfBytes(
     configureWorker();
     const pdf = await pdfjs.getDocument({ data, useSystemFonts: true }).promise;
     const fields = await collectAcroFormFieldsAsync(pdf);
+    const rowStrings = await collectMergedRowStrings(pdf);
     const acro = extractScheduleCAcroValues(fields);
     const layout = await extractViaLayout(pdf);
-    const merged = await extractViaMergedRows(pdf);
+    const merged = await extractViaMergedRows(pdf, rowStrings);
 
     let ocr: Partial<Record<ScheduleCLine, string>> = {};
     const preOcrCount = countNonemptyFromLayers(acro, layout, merged);
@@ -188,6 +207,8 @@ export async function parseScheduleCPdfBytes(
       box31: r31 ?? "",
     };
 
+    const items = buildParsedDocumentItems(fields, rowStrings, raw);
+
     const sources: string[] = [];
     if ([13, 30, 31].some((l) => l in acro)) sources.push("acroform");
     if ([13, 30, 31].some((l) => l in layout)) sources.push("layout");
@@ -195,15 +216,15 @@ export async function parseScheduleCPdfBytes(
     if ([13, 30, 31].some((l) => l in ocr)) sources.push("ocr");
     const source = sources.length > 0 ? sources.join("+") : "unknown";
 
-    if ([r13, r30, r31].every((v) => v === undefined)) {
+    if ([r13, r30, r31].every((v) => v === undefined) && items.length === 0) {
       return {
         ok: false,
         error:
-          "Could not read lines 13, 30, and 31. Use the official IRS fillable Schedule C, a PDF with a text layer, or a clearer scan — OCR ran in-browser but may still miss values on complex layouts.",
+          "Could not read any values from this PDF. Use the official IRS fillable Schedule C, a PDF with a text layer, or a clearer scan — OCR ran in-browser but may still miss values on complex layouts.",
       };
     }
 
-    return { ok: true, data: dataOut, raw, source };
+    return { ok: true, data: dataOut, raw, source, items };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     return { ok: false, error: msg };

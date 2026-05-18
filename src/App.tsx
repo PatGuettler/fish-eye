@@ -38,10 +38,10 @@ export default function App() {
 
       <main className="app-shell app-shell--standalone">
         <header className="app-hero">
-          <h1>Import Schedule C (lines 13, 30, 31)</h1>
+          <h1>Import Schedule C</h1>
           <p className="scm-muted">
-            Upload a fillable IRS Schedule C PDF. Copy values into your return
-            with drag-and-drop chips, or paste after clicking a value.
+            Upload a fillable IRS Schedule C PDF. Drag any parsed value into your
+            form, or click a chip to copy. Nothing is saved or sent to a server.
           </p>
           <IrsScheduleCLinks className="app-hero__links" />
           <div className="app-hero__actions">

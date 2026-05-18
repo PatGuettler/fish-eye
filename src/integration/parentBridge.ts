@@ -10,6 +10,14 @@ export type ScheduleCPopulatePayload = {
   raw?: ScheduleCBoxRaw;
 };
 
+export type FishEyeDragStartMessage = {
+  source: typeof MESSAGE_SOURCE;
+  type: "FISH_EYE_DRAG_START";
+  text: string;
+  x: number;
+  y: number;
+};
+
 export type ScheduleCPostMessage =
   | {
       source: typeof MESSAGE_SOURCE;
@@ -19,7 +27,31 @@ export type ScheduleCPostMessage =
   | {
       source: typeof MESSAGE_SOURCE;
       type: "SCHEDULE_C_CLOSE";
-    };
+    }
+  | FishEyeDragStartMessage;
+
+export function postDragStartToParent(
+  text: string,
+  x: number,
+  y: number,
+  targetOrigin: string = "*",
+): void {
+  const msg: FishEyeDragStartMessage = {
+    source: MESSAGE_SOURCE,
+    type: "FISH_EYE_DRAG_START",
+    text,
+    x,
+    y,
+  };
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage(msg, targetOrigin);
+  }
+}
+
+/** True when parsed values must reach the host via postMessage drag bridge. */
+export function needsCrossFrameDrag(): boolean {
+  return typeof window !== "undefined" && window.parent !== window;
+}
 
 export function buildPopulatePayload(
   data: { box13: number; box30: number; box31: number },

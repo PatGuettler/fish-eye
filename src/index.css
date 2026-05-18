@@ -512,6 +512,22 @@ code {
   gap: 0.5rem;
 }
 
+.scm-chips--scroll {
+  max-height: min(280px, 40vh);
+  overflow-y: auto;
+  padding-right: 0.25rem;
+  align-content: flex-start;
+}
+
+.scm-chip--bridge {
+  cursor: pointer;
+  touch-action: none;
+}
+
+.scm-chip--bridge:active {
+  cursor: pointer;
+}
+
 .scm-chip {
   display: inline-flex;
   align-items: center;
