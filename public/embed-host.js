@@ -151,7 +151,7 @@
     const backdrop = document.createElement(EL_DIV);
     backdrop.style.cssText =
       "position:absolute;inset:0;background:rgba(0,0,0,0.55);backdrop-filter:blur(6px);";
-    backdrop.addEventListener("click", onClose);
+    /* Do not close on backdrop click — that skips sending parsed items from the iframe. */
 
     const frameWrap = document.createElement(EL_DIV);
     frameWrap.style.cssText =
@@ -280,7 +280,27 @@
     let overlay = null;
     let removeListener = null;
     let dragBridge = null;
-    const embedOrigin = new URL(baseUrl).origin;
+    const embedOrigin = new URL(baseUrl, global.location.href).origin;
+    var receivedParsed = false;
+
+    function acceptMessageOrigin(origin) {
+      if (!origin) return false;
+      if (parentOrigin === "*") return true;
+      if (origin === embedOrigin) return true;
+      if (origin === global.location.origin) return true;
+      return false;
+    }
+
+    function deliverParsed(payload) {
+      receivedParsed = !!(payload && payload.items && payload.items.length);
+      if (receivedParsed) {
+        if (options.onParsed) {
+          options.onParsed(payload);
+        } else if (options.parsedPanel) {
+          ScheduleCWidget.renderParsedChips(options.parsedPanel, payload);
+        }
+      }
+    }
 
     function close() {
       if (dragBridge) dragBridge.cleanup();
@@ -296,16 +316,18 @@
       if (ev.source !== iframe.contentWindow) return;
       const d = ev.data;
       if (!d || d.source !== WIDGET_SOURCE) return;
-      if (parentOrigin !== "*" && ev.origin !== embedOrigin) return;
+      if (!acceptMessageOrigin(ev.origin)) return;
 
       if (dragBridge) dragBridge.onMessage(ev);
 
+      if (d.type === "FISH_EYE_WIDGET_DONE") {
+        deliverParsed(d.payload);
+        close();
+        return;
+      }
+
       if (d.type === "FISH_EYE_PARSED_ITEMS") {
-        if (options.onParsed) {
-          options.onParsed(d.payload);
-        } else if (options.parsedPanel) {
-          ScheduleCWidget.renderParsedChips(options.parsedPanel, d.payload);
-        }
+        deliverParsed(d.payload);
         close();
         return;
       }

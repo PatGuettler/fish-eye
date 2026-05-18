@@ -30,6 +30,13 @@ export type FishEyeParsedItemsMessage = {
   payload: FishEyeParsedPayload;
 };
 
+/** Single close message — avoids race between PARSED_ITEMS and SCHEDULE_C_CLOSE. */
+export type FishEyeWidgetDoneMessage = {
+  source: typeof MESSAGE_SOURCE;
+  type: "FISH_EYE_WIDGET_DONE";
+  payload: FishEyeParsedPayload;
+};
+
 export type ScheduleCPostMessage =
   | {
       source: typeof MESSAGE_SOURCE;
@@ -41,7 +48,8 @@ export type ScheduleCPostMessage =
       type: "SCHEDULE_C_CLOSE";
     }
   | FishEyeDragStartMessage
-  | FishEyeParsedItemsMessage;
+  | FishEyeParsedItemsMessage
+  | FishEyeWidgetDoneMessage;
 
 export function postDragStartToParent(
   text: string,
@@ -105,6 +113,22 @@ export function postParsedItemsToParent(
   }
 }
 
+/** Preferred: one message when the parser closes (includes empty items). */
+export function postWidgetDoneToParent(
+  payload: FishEyeParsedPayload,
+  _targetOrigin: string = "*",
+): void {
+  const msg: FishEyeWidgetDoneMessage = {
+    source: MESSAGE_SOURCE,
+    type: "FISH_EYE_WIDGET_DONE",
+    payload,
+  };
+  if (window.parent && window.parent !== window) {
+    // Use "*" so GitHub Pages path/base quirks never block delivery to the host.
+    window.parent.postMessage(msg, "*");
+  }
+}
+
 export function postCloseToParent(targetOrigin: string = "*"): void {
   const msg: ScheduleCPostMessage = {
     source: MESSAGE_SOURCE,
@@ -140,10 +164,10 @@ export function listenForScheduleCMessages(
     if (d.type === "SCHEDULE_C_POPULATE") {
       handlers.onPopulate?.(d.payload);
     }
-    if (d.type === "FISH_EYE_PARSED_ITEMS") {
-      handlers.onParsed?.(d.payload);
+    if (d.type === "FISH_EYE_PARSED_ITEMS" || d.type === "FISH_EYE_WIDGET_DONE") {
+      if (d.payload.items?.length) handlers.onParsed?.(d.payload);
     }
-    if (d.type === "SCHEDULE_C_CLOSE") {
+    if (d.type === "SCHEDULE_C_CLOSE" || d.type === "FISH_EYE_WIDGET_DONE") {
       handlers.onClose?.();
     }
   }

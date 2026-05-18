@@ -610,6 +610,7 @@
         }
 
         function showParsedOnHost(payload) {
+          if (!payload || !payload.items || !payload.items.length) return;
           ScheduleCWidget.renderParsedChips(chipsHost, payload);
           showStatus(
             "Parsed " +
@@ -628,13 +629,17 @@
             showStatus("Widget script failed to load. Check embed-host.js path.");
             return;
           }
-          showStatus("Parser open — upload a PDF, then close the popup (✕).");
+          showStatus(
+            "Parser open — upload a PDF, then close with ✕ inside the popup (not the dimmed area outside it).",
+          );
           ScheduleCWidget.open({
             baseUrl: widgetBase,
             onParsed: showParsedOnHost,
             onClose: function () {
               if (chipsHost.hidden) {
-                showStatus("Closed without parsed values. Open again to import a PDF.");
+                showStatus(
+                  "Closed without parsed values. Upload a PDF, then use the ✕ button inside the popup.",
+                );
               }
             },
           });

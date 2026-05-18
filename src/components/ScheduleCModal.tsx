@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   FORM_4562_MESSAGE,
   box13RequiresForm4562,
@@ -7,9 +7,8 @@ import type { ParsedDocumentItem } from "../lib/parsedDocumentItems";
 import { parseScheduleCPdfBytes } from "../lib/pdfScheduleCParser";
 import {
   needsCrossFrameDrag,
-  postCloseToParent,
   postDragStartToParent,
-  postParsedItemsToParent,
+  postWidgetDoneToParent,
 } from "../integration/parentBridge";
 
 const ACCEPT = "application/pdf";
@@ -68,6 +67,16 @@ export function ScheduleCModal({
   const [source, setSource] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const dragDepth = useRef(0);
+  const itemsRef = useRef<ParsedDocumentItem[]>([]);
+  const sourceRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
+
+  useEffect(() => {
+    sourceRef.current = source;
+  }, [source]);
 
   const inHostEmbed = embedded || needsCrossFrameDrag();
   const crossFrameDrag = inHostEmbed;
@@ -79,17 +88,18 @@ export function ScheduleCModal({
   }, []);
 
   const sendParsedToHostAndClose = useCallback(() => {
-    if (inHostEmbed && items.length > 0) {
-      postParsedItemsToParent(
-        { items, source: source ?? undefined },
+    if (inHostEmbed) {
+      const snapshot = itemsRef.current;
+      postWidgetDoneToParent(
+        {
+          items: snapshot.map((item) => ({ ...item })),
+          source: sourceRef.current ?? undefined,
+        },
         parentOrigin,
       );
     }
-    if (inHostEmbed) {
-      postCloseToParent(parentOrigin);
-    }
     onClose();
-  }, [inHostEmbed, items, source, onClose, parentOrigin]);
+  }, [inHostEmbed, onClose, parentOrigin]);
 
   const handleClose = sendParsedToHostAndClose;
 
