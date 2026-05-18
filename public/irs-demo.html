@@ -272,8 +272,8 @@
           <h1>Form 1040 — sample data entry</h1>
           <p>
             Practice filling a return-like form. Use the Schedule C importer
-            beside Part II to pull lines 13, 30, and 31 from a PDF, then drag or
-            paste into the highlighted fields.
+            beside Part II to parse a PDF, then drag any parsed value into any
+            field on this page — nothing is filled automatically.
           </p>
         </div>
         <a class="back-link" href="./index.html">← Back to fish-eye app</a>
@@ -433,17 +433,17 @@
             <aside class="widget-panel" aria-label="Schedule C PDF import">
               <p class="widget-panel__title">fish-eye — Schedule C import</p>
               <p class="widget-panel__hint">
-                Opens a popup to read your Schedule C PDF in the browser. Drag
-                value chips onto the three fields at left, or click a chip to
-                copy and paste.
+                Opens a popup to read your Schedule C PDF in the browser (in
+                memory only). Press and drag any parsed value onto any field on
+                this page, or click a chip to copy.
               </p>
               <button type="button" class="widget-panel__btn" id="import-schedule-c">
                 Import Schedule C PDF
               </button>
               <ol class="widget-panel__steps">
                 <li>Choose a fillable IRS Schedule C PDF</li>
-                <li>Review parsed lines 13, 30, 31</li>
-                <li>Drag each chip into the matching field</li>
+                <li>Review all parsed values from the document</li>
+                <li>Drag any chip into any field on this page</li>
               </ol>
               <p class="widget-panel__status" id="import-status" role="status"></p>
             </aside>
@@ -513,11 +513,6 @@
           box31: document.getElementById("sc-box31"),
         };
 
-        function displayValue(num, raw) {
-          if (raw != null && String(raw).trim() !== "") return String(raw);
-          return String(num);
-        }
-
         function showStatus(msg) {
           statusEl.textContent = msg;
           statusEl.classList.add("is-visible");
@@ -533,20 +528,11 @@
             showStatus("Widget script failed to load. Check embed-host.js path.");
             return;
           }
+          showStatus("Popup open — drag parsed values onto any field. Nothing auto-fills.");
           ScheduleCWidget.open({
             baseUrl: widgetBase,
-            onPopulate: function (payload) {
-              fields.box13.value = displayValue(payload.box13, payload.raw && payload.raw.box13);
-              fields.box30.value = displayValue(payload.box30, payload.raw && payload.raw.box30);
-              fields.box31.value = displayValue(payload.box31, payload.raw && payload.raw.box31);
-              showStatus(
-                "Received values — you can still drag from the popup or edit fields manually.",
-              );
-            },
             onClose: function () {
-              if (!statusEl.classList.contains("is-visible")) {
-                showStatus("Closed. Open again to import another PDF.");
-              }
+              showStatus("Closed. Open again to parse another PDF.");
             },
           });
         });
@@ -557,18 +543,6 @@
           fields.box31.value = "";
           statusEl.classList.remove("is-visible");
           statusEl.textContent = "";
-        });
-
-        [fields.box13, fields.box30, fields.box31].forEach(function (input) {
-          input.addEventListener("dragover", function (e) {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = "copy";
-          });
-          input.addEventListener("drop", function (e) {
-            e.preventDefault();
-            var text = e.dataTransfer.getData("text/plain");
-            if (text) input.value = text;
-          });
         });
       })();
     </script>
