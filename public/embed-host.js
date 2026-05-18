@@ -6,7 +6,7 @@
  *   <button type="button" onclick="ScheduleCWidget.open()">Import Schedule C</button>
  *
  * Parsed values are never written automatically — users drag chips onto your fields.
- * Options: { baseUrl?, parentOrigin?, onClose? }
+ * Options: { baseUrl?, parentOrigin?, onClose?, onParsed?, parsedPanel? }
  */
 (function (global) {
   const WIDGET_SOURCE = "schedule-c-poc-widget";
@@ -167,6 +167,100 @@
 
   function ScheduleCWidget() {}
 
+  /**
+   * Render draggable parsed-value chips into a host-page panel (in-memory only).
+   * @param {Element|string} container
+   * @param {{ items?: Array<{id:string,label:string,value:string}>, source?: string }} data
+   */
+  ScheduleCWidget.renderParsedChips = function renderParsedChips(container, data) {
+    var root =
+      typeof container === "string"
+        ? document.querySelector(container)
+        : container;
+    if (!root) return;
+
+    var items = (data && data.items) || [];
+    var source = (data && data.source) || "";
+    root.innerHTML = "";
+
+    if (!items.length) {
+      root.hidden = true;
+      return;
+    }
+
+    root.hidden = false;
+
+    var heading = document.createElement("p");
+    heading.className = "host-chips__heading";
+    heading.textContent = "Parsed document (" + items.length + ")";
+
+    var hint = document.createElement("p");
+    hint.className = "host-chips__hint";
+    hint.textContent = source
+      ? "Source: " +
+        source +
+        ". Drag onto any field on this page, or click a chip to copy."
+      : "Drag onto any field on this page, or click a chip to copy.";
+
+    var list = document.createElement("ul");
+    list.className = "host-chips__list";
+
+    items.forEach(function (item) {
+      var li = document.createElement("li");
+      var chip = document.createElement("span");
+      chip.className = "host-chip";
+      chip.draggable = true;
+      chip.setAttribute("role", "button");
+      chip.tabIndex = 0;
+      chip.title = "Drag into a field on this page, or click to copy";
+
+      var label = document.createElement("span");
+      label.className = "host-chip__label";
+      label.textContent = item.label;
+
+      var value = document.createElement("span");
+      value.className = "host-chip__value";
+      value.textContent = item.value;
+
+      chip.appendChild(label);
+      chip.appendChild(value);
+
+      chip.addEventListener("dragstart", function (e) {
+        e.dataTransfer.setData("text/plain", item.value);
+        e.dataTransfer.effectAllowed = "copy";
+      });
+      chip.addEventListener("click", function () {
+        if (global.navigator && global.navigator.clipboard) {
+          void global.navigator.clipboard.writeText(item.value);
+        }
+      });
+      chip.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          if (global.navigator && global.navigator.clipboard) {
+            void global.navigator.clipboard.writeText(item.value);
+          }
+        }
+      });
+
+      li.appendChild(chip);
+      list.appendChild(li);
+    });
+
+    var clearBtn = document.createElement("button");
+    clearBtn.type = "button";
+    clearBtn.className = "host-chips__clear";
+    clearBtn.textContent = "Clear parsed values";
+    clearBtn.addEventListener("click", function () {
+      ScheduleCWidget.renderParsedChips(root, { items: [] });
+    });
+
+    root.appendChild(heading);
+    root.appendChild(hint);
+    root.appendChild(list);
+    root.appendChild(clearBtn);
+  };
+
   ScheduleCWidget.open = function open(options) {
     options = options || {};
     const baseUrl = widgetBaseUrl(options);
@@ -205,6 +299,16 @@
       if (parentOrigin !== "*" && ev.origin !== embedOrigin) return;
 
       if (dragBridge) dragBridge.onMessage(ev);
+
+      if (d.type === "FISH_EYE_PARSED_ITEMS") {
+        if (options.onParsed) {
+          options.onParsed(d.payload);
+        } else if (options.parsedPanel) {
+          ScheduleCWidget.renderParsedChips(options.parsedPanel, d.payload);
+        }
+        close();
+        return;
+      }
 
       if (d.type === "SCHEDULE_C_CLOSE") {
         close();

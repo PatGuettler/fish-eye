@@ -9,6 +9,7 @@ import {
   needsCrossFrameDrag,
   postCloseToParent,
   postDragStartToParent,
+  postParsedItemsToParent,
 } from "../integration/parentBridge";
 
 const ACCEPT = "application/pdf";
@@ -68,7 +69,8 @@ export function ScheduleCModal({
   const [dragActive, setDragActive] = useState(false);
   const dragDepth = useRef(0);
 
-  const crossFrameDrag = embedded || needsCrossFrameDrag();
+  const inHostEmbed = embedded || needsCrossFrameDrag();
+  const crossFrameDrag = inHostEmbed;
 
   const reset = useCallback(() => {
     setError(null);
@@ -76,12 +78,20 @@ export function ScheduleCModal({
     setSource(null);
   }, []);
 
-  const handleClose = useCallback(() => {
-    if (embedded || needsCrossFrameDrag()) {
+  const sendParsedToHostAndClose = useCallback(() => {
+    if (inHostEmbed && items.length > 0) {
+      postParsedItemsToParent(
+        { items, source: source ?? undefined },
+        parentOrigin,
+      );
+    }
+    if (inHostEmbed) {
       postCloseToParent(parentOrigin);
     }
     onClose();
-  }, [embedded, onClose, parentOrigin]);
+  }, [inHostEmbed, items, source, onClose, parentOrigin]);
+
+  const handleClose = sendParsedToHostAndClose;
 
   const handleFiles = useCallback(async (files: FileList | null) => {
     const file = files?.[0];
@@ -221,7 +231,7 @@ export function ScheduleCModal({
             <p className="scm-muted">
               Source: <strong>{source}</strong>.{" "}
               {crossFrameDrag
-                ? "Press and drag a value onto any field on your page. Nothing is filled automatically."
+                ? "Close this popup (✕) to show all values in the import panel on your page, then drag them into any field."
                 : "Drag a value into a field on this page, or click to copy."}
             </p>
             <ul className="scm-chips scm-chips--scroll">
@@ -241,11 +251,11 @@ export function ScheduleCModal({
                 type="button"
                 className="scm-btn primary"
                 onClick={() => {
-                  reset();
+                  if (!crossFrameDrag) reset();
                   handleClose();
                 }}
               >
-                Done — close
+                {crossFrameDrag ? "Use on page — close" : "Done — close"}
               </button>
               <button type="button" className="scm-btn" onClick={reset}>
                 Clear

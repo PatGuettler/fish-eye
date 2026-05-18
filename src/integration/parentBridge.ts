@@ -1,3 +1,4 @@
+import type { ParsedDocumentItem } from "../lib/parsedDocumentItems";
 import type { ScheduleCBoxRaw } from "../lib/scheduleCExtract";
 
 export const MESSAGE_SOURCE = "schedule-c-poc-widget" as const;
@@ -18,6 +19,17 @@ export type FishEyeDragStartMessage = {
   y: number;
 };
 
+export type FishEyeParsedPayload = {
+  items: ParsedDocumentItem[];
+  source?: string;
+};
+
+export type FishEyeParsedItemsMessage = {
+  source: typeof MESSAGE_SOURCE;
+  type: "FISH_EYE_PARSED_ITEMS";
+  payload: FishEyeParsedPayload;
+};
+
 export type ScheduleCPostMessage =
   | {
       source: typeof MESSAGE_SOURCE;
@@ -28,7 +40,8 @@ export type ScheduleCPostMessage =
       source: typeof MESSAGE_SOURCE;
       type: "SCHEDULE_C_CLOSE";
     }
-  | FishEyeDragStartMessage;
+  | FishEyeDragStartMessage
+  | FishEyeParsedItemsMessage;
 
 export function postDragStartToParent(
   text: string,
@@ -78,6 +91,20 @@ export function postPopulateToParent(
   }
 }
 
+export function postParsedItemsToParent(
+  payload: FishEyeParsedPayload,
+  targetOrigin: string = "*",
+): void {
+  const msg: FishEyeParsedItemsMessage = {
+    source: MESSAGE_SOURCE,
+    type: "FISH_EYE_PARSED_ITEMS",
+    payload,
+  };
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage(msg, targetOrigin);
+  }
+}
+
 export function postCloseToParent(targetOrigin: string = "*"): void {
   const msg: ScheduleCPostMessage = {
     source: MESSAGE_SOURCE,
@@ -90,6 +117,7 @@ export function postCloseToParent(targetOrigin: string = "*"): void {
 
 export type ScheduleCMessageHandlers = {
   onPopulate?: (payload: ScheduleCPopulatePayload) => void;
+  onParsed?: (payload: FishEyeParsedPayload) => void;
   onClose?: () => void;
 };
 
@@ -111,6 +139,9 @@ export function listenForScheduleCMessages(
 
     if (d.type === "SCHEDULE_C_POPULATE") {
       handlers.onPopulate?.(d.payload);
+    }
+    if (d.type === "FISH_EYE_PARSED_ITEMS") {
+      handlers.onParsed?.(d.payload);
     }
     if (d.type === "SCHEDULE_C_CLOSE") {
       handlers.onClose?.();

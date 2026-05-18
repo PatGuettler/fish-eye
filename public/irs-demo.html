@@ -238,6 +238,95 @@
         display: block;
       }
 
+      .host-chips {
+        margin-top: 1rem;
+        padding-top: 0.85rem;
+        border-top: 1px solid rgba(129, 140, 248, 0.25);
+      }
+
+      .host-chips[hidden] {
+        display: none !important;
+      }
+
+      .host-chips__heading {
+        margin: 0 0 0.35rem;
+        font-size: 0.82rem;
+        font-weight: 700;
+        color: #c7d2fe;
+      }
+
+      .host-chips__hint {
+        margin: 0 0 0.65rem;
+        font-size: 0.72rem;
+        line-height: 1.45;
+        color: #a1a1aa;
+      }
+
+      .host-chips__list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        max-height: min(280px, 42vh);
+        overflow-y: auto;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        align-content: flex-start;
+      }
+
+      .host-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        max-width: 100%;
+        padding: 0.35rem 0.55rem;
+        border-radius: 999px;
+        border: 1px solid rgba(129, 140, 248, 0.45);
+        background: rgba(99, 102, 241, 0.18);
+        cursor: grab;
+        user-select: none;
+        font-size: 0.72rem;
+      }
+
+      .host-chip:active {
+        cursor: grabbing;
+      }
+
+      .host-chip__label {
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: #a5b4fc;
+        flex-shrink: 0;
+      }
+
+      .host-chip__value {
+        font-weight: 600;
+        color: #f4f4f5;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .host-chips__clear {
+        display: block;
+        width: 100%;
+        margin-top: 0.65rem;
+        padding: 0.4rem 0.65rem;
+        border: 1px solid rgba(129, 140, 248, 0.35);
+        border-radius: 8px;
+        background: transparent;
+        color: #c7d2fe;
+        font: inherit;
+        font-size: 0.75rem;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      .host-chips__clear:hover {
+        background: rgba(99, 102, 241, 0.12);
+      }
+
       .form-actions {
         display: flex;
         flex-wrap: wrap;
@@ -433,18 +522,19 @@
             <aside class="widget-panel" aria-label="Schedule C PDF import">
               <p class="widget-panel__title">fish-eye — Schedule C import</p>
               <p class="widget-panel__hint">
-                Opens a popup to read your Schedule C PDF in the browser (in
-                memory only). Press and drag any parsed value onto any field on
-                this page, or click a chip to copy.
+                Opens a popup to parse your Schedule C PDF in the browser (in
+                memory only). Close the popup to show all parsed values here,
+                then drag them onto any field on this page.
               </p>
               <button type="button" class="widget-panel__btn" id="import-schedule-c">
                 Import Schedule C PDF
               </button>
               <ol class="widget-panel__steps">
                 <li>Choose a fillable IRS Schedule C PDF</li>
-                <li>Review all parsed values from the document</li>
-                <li>Drag any chip into any field on this page</li>
+                <li>Close the parser popup (✕)</li>
+                <li>Drag chips from this panel into any field</li>
               </ol>
+              <section id="parsed-chips-host" class="host-chips" hidden></section>
               <p class="widget-panel__status" id="import-status" role="status"></p>
             </aside>
           </div>
@@ -507,6 +597,7 @@
     <script>
       (function () {
         var statusEl = document.getElementById("import-status");
+        var chipsHost = document.getElementById("parsed-chips-host");
         var fields = {
           box13: document.getElementById("sc-box13"),
           box30: document.getElementById("sc-box30"),
@@ -516,6 +607,15 @@
         function showStatus(msg) {
           statusEl.textContent = msg;
           statusEl.classList.add("is-visible");
+        }
+
+        function showParsedOnHost(payload) {
+          ScheduleCWidget.renderParsedChips(chipsHost, payload);
+          showStatus(
+            "Parsed " +
+              payload.items.length +
+              " values — drag chips below onto any field.",
+          );
         }
 
         var widgetBase =
@@ -528,11 +628,14 @@
             showStatus("Widget script failed to load. Check embed-host.js path.");
             return;
           }
-          showStatus("Popup open — drag parsed values onto any field. Nothing auto-fills.");
+          showStatus("Parser open — upload a PDF, then close the popup (✕).");
           ScheduleCWidget.open({
             baseUrl: widgetBase,
+            onParsed: showParsedOnHost,
             onClose: function () {
-              showStatus("Closed. Open again to parse another PDF.");
+              if (chipsHost.hidden) {
+                showStatus("Closed without parsed values. Open again to import a PDF.");
+              }
             },
           });
         });
@@ -541,6 +644,7 @@
           fields.box13.value = "";
           fields.box30.value = "";
           fields.box31.value = "";
+          ScheduleCWidget.renderParsedChips(chipsHost, { items: [] });
           statusEl.classList.remove("is-visible");
           statusEl.textContent = "";
         });

@@ -50,7 +50,7 @@ document.getElementById("import-schedule-c").addEventListener("click", () => {
 });
 ```
 
-The host script bridges drag-and-drop from the iframe onto any `input`, `textarea`, or `select` on your page. **Values are never auto-filled** — users choose where each parsed value goes.
+The host script bridges drag-and-drop from the iframe onto any `input`, `textarea`, or `select` on your page. After the user closes the parser popup, parsed values appear in your embed panel (see `ScheduleCWidget.renderParsedChips` or `onParsed` / `parsedPanel` options). **Values are never auto-filled** — users choose where each parsed value goes.
 
 A fuller example with sample form fields is in [public/host-example.html](public/host-example.html).
 
@@ -60,8 +60,9 @@ Message types (source: `schedule-c-poc-widget`):
 
 | Type | Meaning |
 |------|---------|
-| `FISH_EYE_DRAG_START` | User began dragging a parsed value (handled by `embed-host.js`) |
-| `SCHEDULE_C_CLOSE` | User closed the widget |
+| `FISH_EYE_DRAG_START` | User began dragging a parsed value from inside the iframe (handled by `embed-host.js`) |
+| `FISH_EYE_PARSED_ITEMS` | User closed the parser with parsed values — render chips on the host page |
+| `SCHEDULE_C_CLOSE` | User closed the widget without sending parsed items (or after `FISH_EYE_PARSED_ITEMS`) |
 
 ## Development
 
