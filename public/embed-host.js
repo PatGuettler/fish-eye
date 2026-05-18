@@ -172,17 +172,35 @@
    * @param {Element|string} container
    * @param {{ items?: Array<{id:string,label:string,value:string}>, source?: string }} data
    */
+  var PARSED_PAGE_SIZE = 5;
+
   function filterParsedItems(items, query) {
     var q = String(query || "")
       .trim()
       .toLowerCase();
-    if (!q) return items;
+    if (!q) return items.slice();
     return items.filter(function (item) {
       return (
         item.label.toLowerCase().indexOf(q) !== -1 ||
         item.value.toLowerCase().indexOf(q) !== -1
       );
     });
+  }
+
+  function paginateItems(items, pageIndex, pageSize) {
+    if (items.length === 0) {
+      return { page: 0, totalPages: 0, slice: [] };
+    }
+    var totalPages = Math.ceil(items.length / pageSize);
+    var page = pageIndex;
+    if (page < 0) page = 0;
+    if (page > totalPages - 1) page = totalPages - 1;
+    var start = page * pageSize;
+    return {
+      page: page,
+      totalPages: totalPages,
+      slice: items.slice(start, start + pageSize),
+    };
   }
 
   function updateParsedHeading(heading, shown, total) {
@@ -281,17 +299,73 @@
     var list = document.createElement("ul");
     list.className = "host-chips__list";
 
+    var pager = document.createElement("div");
+    pager.className = "host-chips__pager";
+    pager.hidden = true;
+
+    var prevBtn = document.createElement("button");
+    prevBtn.type = "button";
+    prevBtn.className = "host-chips__pager-btn";
+    prevBtn.textContent = "Previous";
+
+    var pagerStatus = document.createElement("span");
+    pagerStatus.className = "host-chips__pager-status";
+    pagerStatus.setAttribute("aria-live", "polite");
+
+    var nextBtn = document.createElement("button");
+    nextBtn.type = "button";
+    nextBtn.className = "host-chips__pager-btn";
+    nextBtn.textContent = "Next";
+
+    pager.appendChild(prevBtn);
+    pager.appendChild(pagerStatus);
+    pager.appendChild(nextBtn);
+
+    var currentPage = 0;
+
     function paintList() {
       var filtered = filterParsedItems(items, search.value);
+      var paged = paginateItems(filtered, currentPage, PARSED_PAGE_SIZE);
+      currentPage = paged.page;
+
       list.innerHTML = "";
       updateParsedHeading(heading, filtered.length, items.length);
       empty.hidden = filtered.length > 0;
-      filtered.forEach(function (item) {
+
+      if (filtered.length === 0) {
+        pager.hidden = true;
+        return;
+      }
+
+      pager.hidden = paged.totalPages <= 1;
+      pagerStatus.textContent =
+        "Page " + (paged.page + 1) + " of " + paged.totalPages;
+      prevBtn.disabled = paged.page <= 0;
+      nextBtn.disabled = paged.page >= paged.totalPages - 1;
+
+      paged.slice.forEach(function (item) {
         appendParsedChip(list, item);
       });
     }
 
-    search.addEventListener("input", paintList);
+    function onSearchChange() {
+      currentPage = 0;
+      paintList();
+    }
+
+    search.addEventListener("input", onSearchChange);
+    search.addEventListener("search", onSearchChange);
+
+    prevBtn.addEventListener("click", function () {
+      currentPage -= 1;
+      paintList();
+    });
+
+    nextBtn.addEventListener("click", function () {
+      currentPage += 1;
+      paintList();
+    });
+
     paintList();
 
     var clearBtn = document.createElement("button");
@@ -307,6 +381,7 @@
     root.appendChild(search);
     root.appendChild(empty);
     root.appendChild(list);
+    root.appendChild(pager);
     root.appendChild(clearBtn);
   };
 

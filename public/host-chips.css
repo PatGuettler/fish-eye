@@ -121,6 +121,50 @@
   text-overflow: unset;
 }
 
+.host-chips__pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.65rem;
+}
+
+.host-chips__pager[hidden] {
+  display: none !important;
+}
+
+.host-chips__pager-status {
+  flex: 1 1 auto;
+  min-width: 6rem;
+  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #a1a1aa;
+}
+
+.host-chips__pager-btn {
+  flex: 0 0 auto;
+  padding: 0.35rem 0.65rem;
+  border: 1px solid rgba(129, 140, 248, 0.45);
+  border-radius: 8px;
+  background: rgba(99, 102, 241, 0.2);
+  color: #e4e4e7;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.host-chips__pager-btn:hover:not(:disabled) {
+  background: rgba(99, 102, 241, 0.32);
+}
+
+.host-chips__pager-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .host-chips__clear {
   display: block;
   width: 100%;
