@@ -58,6 +58,7 @@ jobs:
           test -f dist/host-chips.css
           test -f dist/404.html
           grep -q 'embed-host.js' dist/irs-demo.html
+          grep -q 'import-schedule-c' dist/irs-demo.html
           test -f dist/.nojekyll
           grep -q 'script type="module"' dist/index.html || (echo "dist/index.html missing Vite bundle tags" && exit 1)
           if grep -q '/src/main.tsx' dist/index.html; then

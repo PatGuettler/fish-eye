@@ -29,7 +29,7 @@ Fillable IRS forms work best. Scanned PDFs may use in-browser OCR and take longe
 
 ### Test me now (IRS-style demo page)
 
-From the app home page, use **Test me now**, or open [`irs-demo.html`](public/irs-demo.html) on your deployment (for example `https://patguettler.github.io/fish-eye/irs-demo.html`).
+From the app home page, use **Test me now**, or open the IRS demo at `/irs-demo.html` on your deployment (for example `https://patguettler.github.io/fish-eye/irs-demo.html`). Source: [`public/irs-demo.html`](public/irs-demo.html) (copied to site root on build).
 
 That static page simulates a return with many data fields. Beside Schedule C lines 13, 30, and 31, the **fish-eye** panel opens the import popup so you can load a PDF and drag or paste values into the demo form.
 

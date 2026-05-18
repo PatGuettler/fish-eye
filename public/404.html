@@ -7,6 +7,10 @@
     <script>
       (function () {
         var path = location.pathname;
+        if (/\/public\/irs-demo\.html$/i.test(path)) {
+          location.replace(path.replace(/\/public\/irs-demo\.html$/i, "/irs-demo.html"));
+          return;
+        }
         if (/\/irs-demo\/?$/i.test(path)) {
           location.replace(path.replace(/\/irs-demo\/?$/i, "/irs-demo.html"));
           return;
