@@ -25,6 +25,7 @@ export default defineConfig({
       input: {
         main: path.resolve(__dirname, "index.html"),
         embed: path.resolve(__dirname, "embed.html"),
+        irsDemo: path.resolve(__dirname, "public/irs-demo.html"),
       },
     },
   },

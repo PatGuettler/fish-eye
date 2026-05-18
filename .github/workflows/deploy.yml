@@ -5,7 +5,7 @@ name: Test, build, deploy GitHub Pages
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, vibe-tha-vibe]
   workflow_dispatch:
 
 permissions:
@@ -53,6 +53,8 @@ jobs:
           test -f dist/embed.html
           test -f dist/irs-demo.html
           test -f dist/embed-host.js
+          test -f dist/404.html
+          grep -q 'embed-host.js' dist/irs-demo.html
           test -f dist/.nojekyll
           grep -q 'script type="module"' dist/index.html || (echo "dist/index.html missing Vite bundle tags" && exit 1)
           if grep -q '/src/main.tsx' dist/index.html; then

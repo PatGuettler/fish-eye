@@ -73,7 +73,13 @@ Message types (source: `schedule-c-poc-widget`):
 | `npm test` | Unit tests (includes `f1040sc.pdf` fixture when present at repo root) |
 | `npm run typecheck` | TypeScript check |
 
-**GitHub Pages:** In repository **Settings → Pages**, set **Build and deployment** source to **GitHub Actions**, not “Deploy from a branch”. The workflow builds with Vite and publishes `dist/`.
+**GitHub Pages:** In repository **Settings → Pages → Build and deployment**, set the source to **GitHub Actions** (not “Deploy from a branch”). Branch deploy serves raw source files; the app needs the Vite build in `dist/` (bundled JS, correct `/fish-eye/` asset paths).
+
+1. Settings → Pages → Source: **GitHub Actions**
+2. Push to `main` or `vibe-tha-vibe` (or run **Actions → Test, build, deploy GitHub Pages → Run workflow**)
+3. After the workflow succeeds, open `https://<user>.github.io/fish-eye/`
+
+If you see `404` for `/src/main.tsx` or `/assets/…` in the browser console, Pages is still serving the repo root instead of the Actions artifact — switch the source to GitHub Actions and redeploy.
 
 For a project site (`username.github.io/repo-name/`), CI sets `VITE_BASE=/repo-name/`. For a user site (`username.github.io` repo), the base path is `/`.
 
