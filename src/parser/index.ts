@@ -4,8 +4,14 @@ export { DocumentFormatParser } from "./core/DocumentFormatParser";
 export { DocumentFlavor } from "./core/DocumentFlavor";
 export { DocumentParser } from "./core/DocumentParser";
 export { DocumentParserRegistry } from "./core/DocumentParserRegistry";
-export type { ParsedDocumentContent, PdfParsedContent } from "./core/ParsedDocumentContent";
-export { isPdfParsedContent } from "./core/ParsedDocumentContent";
+export type {
+  ImageParsedContent,
+  ParsedDocumentContent,
+  PdfParsedContent,
+} from "./core/ParsedDocumentContent";
+export { isImageParsedContent, isPdfParsedContent } from "./core/ParsedDocumentContent";
+export { detectDocumentFormat, isPdfBytes } from "./detectDocumentFormat";
+export { JpegDocumentFormatParser } from "./format/jpeg/JpegDocumentFormatParser";
 export type {
   FlavorParseOutcome,
   FlavorParseSuccess,

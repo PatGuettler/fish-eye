@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { DocumentParser } from "./DocumentParser";
 import { DocDocumentFormatParser } from "../format/doc/DocDocumentFormatParser";
 import { PdfDocumentFormatParser } from "../format/pdf/PdfDocumentFormatParser";
+import { JpegDocumentFormatParser } from "../format/jpeg/JpegDocumentFormatParser";
 import { GenericDocumentFlavor } from "../flavor/generic/GenericDocumentFlavor";
 import { ScheduleCDocumentFlavor } from "../flavor/scheduleC/ScheduleCDocumentFlavor";
 
@@ -36,5 +37,14 @@ describe("DocumentParser", () => {
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.error.length).toBeGreaterThan(0);
+  });
+
+  it("composes JPEG format with Schedule C flavor", () => {
+    const parser = new DocumentParser(
+      new JpegDocumentFormatParser(),
+      new ScheduleCDocumentFlavor(),
+    );
+    expect(parser.formatKind).toBe("jpeg");
+    expect(parser.flavorId).toBe("schedule-c");
   });
 });

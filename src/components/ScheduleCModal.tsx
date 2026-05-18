@@ -4,14 +4,17 @@ import {
   box13RequiresForm4562,
 } from "../lib/scheduleCExtract";
 import type { ParsedDocumentItem } from "../lib/parsedDocumentItems";
-import { parseScheduleCPdfBytes } from "../lib/pdfScheduleCParser";
+import {
+  detectDocumentFormat,
+  parseScheduleCDocument,
+} from "../lib/parseScheduleCDocument";
 import {
   needsCrossFrameDrag,
   postDragStartToParent,
   postWidgetDoneToParent,
 } from "../integration/parentBridge";
 
-const ACCEPT = "application/pdf";
+const ACCEPT = "application/pdf,image/jpeg,.jpg,.jpeg";
 
 type Props = {
   open: boolean;
@@ -106,16 +109,17 @@ export function ScheduleCModal({
   const handleFiles = useCallback(async (files: FileList | null) => {
     const file = files?.[0];
     if (!file) return;
-    if (file.type && file.type !== ACCEPT) {
-      setError("Please upload a PDF file.");
+    const buf = await file.arrayBuffer();
+    const format = detectDocumentFormat(buf, file.type || undefined);
+    if (!format) {
+      setError("Please upload a PDF or JPEG (.jpg) image of your Schedule C.");
       return;
     }
     setBusy(true);
     setError(null);
     setItems([]);
     try {
-      const buf = await file.arrayBuffer();
-      const result = await parseScheduleCPdfBytes(buf);
+      const result = await parseScheduleCDocument(buf, format);
       if (!result.ok) {
         setError(result.error);
         return;
@@ -181,8 +185,8 @@ export function ScheduleCModal({
           <section className="scm-header__text">
             <h1 id="scm-title">Upload Schedule C</h1>
             <p id="scm-desc" className="scm-subtitle">
-              PDF stays in this browser only — nothing is saved or sent to a
-              server.
+              PDF or photo stays in this browser only — nothing is saved or sent
+              to a server.
             </p>
           </section>
           <button
@@ -205,9 +209,9 @@ export function ScheduleCModal({
           <section className="scm-dropzone__icon">
             <UploadIcon />
           </section>
-          <p className="scm-dropzone__title">Drop your Schedule C PDF</p>
+          <p className="scm-dropzone__title">Drop your Schedule C PDF or photo</p>
           <p className="scm-dropzone__hint">
-            or browse — fillable IRS forms work best.
+            or browse — fillable IRS PDFs work best; photos use in-browser OCR.
           </p>
           <section className="scm-file-row">
             <label className="scm-file-label">
@@ -227,7 +231,8 @@ export function ScheduleCModal({
               <section>
                 <p className="scm-spinner-title">Parsing…</p>
                 <p className="scm-spinner-hint">
-                  Scanned PDFs use in-browser OCR (first run may take ~30–60s).
+                  Photos and scanned PDFs use in-browser OCR (first run may take
+                  ~30–60s).
                 </p>
               </section>
             </section>
