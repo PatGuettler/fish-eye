@@ -1,3 +1,4 @@
+import { extractUserInputCandidatesFromRows } from "../../../lib/formLineValues";
 import type { ScheduleCBoxRaw } from "../../../lib/scheduleCExtract";
 import type { ParsedDocumentItem } from "../../core/types";
 
@@ -46,6 +47,18 @@ export function buildScheduleCParsedDocumentItems(
 
   for (const { label, key } of HIGHLIGHT_KEYS) {
     push(itemId("line", key), label, raw[key]);
+  }
+
+  for (const { label, value } of extractUserInputCandidatesFromRows(rowStrings)) {
+    const already =
+      raw.box13 === value || raw.box30 === value || raw.box31 === value;
+    if (!already) {
+      push(
+        itemId("field", `ui-${label}-${value}`),
+        label,
+        value,
+      );
+    }
   }
 
   const acroNames = [...fields.keys()].filter(isPrimaryAcroFieldName).sort();

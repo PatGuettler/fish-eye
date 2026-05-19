@@ -1,7 +1,27 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
+
+/** Browser/dev bundle must not include Node-only `createRequire` OCR. */
+function tesseractNodeStubPlugin(): Plugin {
+  const stubId = "\0fish-eye-tesseract-node-stub";
+  return {
+    name: "fish-eye-tesseract-node-stub",
+    enforce: "pre",
+    resolveId(source) {
+      if (source.includes("tesseractClient.node")) {
+        return stubId;
+      }
+    },
+    load(id) {
+      if (id !== stubId) return;
+      return `export async function createOcrWorker() {
+  throw new Error("Node OCR is not available in the browser bundle.");
+}`;
+    },
+  };
+}
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -15,7 +35,7 @@ function viteBase(): string {
 }
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), tesseractNodeStubPlugin()],
   base: viteBase(),
   worker: {
     format: "es",
@@ -29,6 +49,6 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    exclude: ["tesseract.js"],
+    include: ["tesseract.js/dist/tesseract.esm.min.js"],
   },
 });

@@ -4,6 +4,36 @@ export const IMAGE_OCR_MAX_DIMENSION = 2500;
 /** Reject huge files before decode. */
 export const IMAGE_MAX_BYTES = 12 * 1024 * 1024;
 
+/** Read width/height from SOF0/SOF2 segment (no full decode). */
+export function readJpegDimensions(
+  bytes: ArrayBuffer,
+): { width: number; height: number } | null {
+  const u = new Uint8Array(bytes);
+  if (!isJpegBytes(bytes)) return null;
+  let i = 2;
+  while (i + 8 < u.length) {
+    if (u[i] !== 0xff) {
+      i += 1;
+      continue;
+    }
+    const marker = u[i + 1];
+    if (marker === 0xc0 || marker === 0xc2) {
+      const height = (u[i + 5] << 8) | u[i + 6];
+      const width = (u[i + 7] << 8) | u[i + 8];
+      if (width > 0 && height > 0) return { width, height };
+      return null;
+    }
+    if (marker === 0xd8 || marker === 0xd9 || (marker >= 0xd0 && marker <= 0xd7)) {
+      i += 2;
+      continue;
+    }
+    const len = (u[i + 2] << 8) | u[i + 3];
+    if (len < 2) break;
+    i += 2 + len;
+  }
+  return null;
+}
+
 export function isJpegBytes(bytes: ArrayBuffer): boolean {
   if (bytes.byteLength < 3) return false;
   const u = new Uint8Array(bytes, 0, 3);

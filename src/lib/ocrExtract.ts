@@ -1,37 +1,115 @@
 import type * as pdfjs from "pdfjs-dist";
-import { extractLineAmountFromRows } from "./pdfTextRows";
+import { decodeJpegToCanvas } from "../parser/format/image/decodeImage";
+import { extractScheduleCLineValuesFromRows } from "./formLineValues";
+import { preprocessCanvasForOcr } from "./imagePreprocess";
+import {
+  dedupeRowStrings,
+  rowStringsFromOcrPage,
+  splitPlainOcrText,
+} from "./ocrPageRows";
+import type { OcrPageData, OcrWorker } from "./tesseractClient.types";
 import type { ScheduleCLine } from "./acroFormMatch";
 
-function splitOcrTextToLines(text: string): string[] {
-  const linesOut: string[] = [];
-  for (const line of text.split(/\r?\n/)) {
-    const t = line.trim();
-    if (t) linesOut.push(t);
+/** Tesseract page segmentation modes useful for forms + scattered field text. */
+const OCR_PSM_MODES = ["6", "11", "3"] as const;
+
+async function createOcrWorkerForEnv(): Promise<OcrWorker> {
+  if (typeof window !== "undefined") {
+    const { createOcrWorker } = await import("./tesseractClient.browser");
+    return createOcrWorker();
   }
-  return linesOut;
+  const { createOcrWorker } = await import(
+    /* @vite-ignore */ "./tesseractClient.node"
+  );
+  return createOcrWorker();
+}
+
+function canDecodeJpegInBrowser(): boolean {
+  return (
+    typeof document !== "undefined" &&
+    typeof createImageBitmap === "function"
+  );
+}
+
+async function recognizePageOnce(
+  worker: OcrWorker,
+  image: unknown,
+  psm: string,
+): Promise<OcrPageData> {
+  if (worker.setParameters) {
+    await worker.setParameters({
+      tessedit_pageseg_mode: psm,
+      user_defined_dpi: "300",
+    });
+  }
+  const { data } = await worker.recognize(image, {}, { text: true });
+  return data;
+}
+
+function rowsFromOcrData(data: OcrPageData): string[] {
+  return dedupeRowStrings([
+    ...rowStringsFromOcrPage(data),
+    ...splitPlainOcrText(data.text ?? ""),
+  ]);
 }
 
 /**
- * Run Tesseract on a canvas. Loads ~2MB+ on first use; data never leaves the tab.
+ * Run Tesseract with multiple segmentation modes and spatial row clustering.
+ * Loads ~2MB+ on first use; data never leaves the tab.
  */
-export async function recognizeCanvas(
+export async function recognizeCanvasToRows(
   canvas: HTMLCanvasElement | OffscreenCanvas,
 ): Promise<string[]> {
-  const { createWorker } = await import("tesseract.js");
-  const worker = await createWorker("eng", 1, { logger: () => {} });
+  const prepped =
+    typeof document !== "undefined"
+      ? preprocessCanvasForOcr(canvas as HTMLCanvasElement)
+      : canvas;
+
+  const worker = await createOcrWorkerForEnv();
+  const merged: string[] = [];
   try {
-    const {
-      data: { text },
-    } = await worker.recognize(canvas as HTMLCanvasElement);
-    return splitOcrTextToLines(text);
+    for (const psm of OCR_PSM_MODES) {
+      const data = await recognizePageOnce(worker, prepped, psm);
+      merged.push(...rowsFromOcrData(data));
+    }
   } finally {
     await worker.terminate();
   }
+  return dedupeRowStrings(merged);
 }
 
-/** OCR a JPEG (or other image decoded to canvas) into line strings. */
+/** @deprecated Prefer {@link recognizeCanvasToRows}. */
+export async function recognizeCanvas(
+  canvas: HTMLCanvasElement | OffscreenCanvas,
+): Promise<string[]> {
+  return recognizeCanvasToRows(canvas);
+}
+
+/** OCR a JPEG in the browser (decode → canvas) or Node (buffer recognize). */
+export async function ocrJpegBytes(bytes: ArrayBuffer): Promise<string[]> {
+  if (canDecodeJpegInBrowser()) {
+    const canvas = await decodeJpegToCanvas(bytes);
+    return recognizeCanvasToRows(canvas);
+  }
+
+  const worker = await createOcrWorkerForEnv();
+  const merged: string[] = [];
+  try {
+    const input =
+      typeof Buffer !== "undefined" ? Buffer.from(bytes) : bytes;
+    for (const psm of OCR_PSM_MODES) {
+      const data = await recognizePageOnce(worker, input, psm);
+      merged.push(...rowsFromOcrData(data));
+    }
+  } finally {
+    await worker.terminate();
+  }
+  return dedupeRowStrings(merged);
+}
+
+/** @deprecated Use {@link ocrJpegBytes}. */
 export async function ocrImageCanvas(canvas: HTMLCanvasElement): Promise<string[]> {
-  return recognizeCanvas(canvas);
+  return recognizeCanvasToRows(canvas);
 }
 
 /**
@@ -59,7 +137,7 @@ export async function ocrPdfToLineStrings(
       viewport,
     });
     await renderTask.promise;
-    linesOut.push(...(await recognizeCanvas(canvas)));
+    linesOut.push(...(await recognizeCanvasToRows(canvas)));
   }
   return linesOut;
 }
@@ -67,10 +145,5 @@ export async function ocrPdfToLineStrings(
 export function extractLinesFromOcrRows(
   ocrLines: string[],
 ): Partial<Record<ScheduleCLine, string>> {
-  const out: Partial<Record<ScheduleCLine, string>> = {};
-  for (const line of [13, 30, 31] as const) {
-    const v = extractLineAmountFromRows(ocrLines, line);
-    if (v !== undefined) out[line] = v;
-  }
-  return out;
+  return extractScheduleCLineValuesFromRows(ocrLines);
 }

@@ -1,6 +1,7 @@
 import type * as pdfjs from "pdfjs-dist";
 import { extractScheduleCAcroValues } from "../../../lib/acroFormMatch";
 import type { ScheduleCLine } from "../../../lib/acroFormMatch";
+import { extractScheduleCLineValuesFromRows } from "../../../lib/formLineValues";
 import { extractLinesFromOcrRows, ocrPdfToLineStrings } from "../../../lib/ocrExtract";
 import { extractLineAmountFromRows } from "../../../lib/pdfTextRows";
 import {
@@ -70,7 +71,7 @@ async function parseScheduleCFromSurface(
 
   let ocr: Partial<Record<ScheduleCLine, string>> = {};
   if (surface.ocrAlreadyApplied) {
-    ocr = extractLinesFromOcrRows([...surface.rowStrings]);
+    ocr = extractScheduleCLineValuesFromRows(surface.rowStrings);
   } else {
     const preOcrCount = countNonemptyFromLayers(acro, layout, merged);
     if (preOcrCount < 3 && surface.pdf && typeof document !== "undefined") {
@@ -105,12 +106,15 @@ async function parseScheduleCFromSurface(
     raw,
   );
 
-  const sources: string[] = [];
-  if ([13, 30, 31].some((l) => l in acro)) sources.push("acroform");
-  if ([13, 30, 31].some((l) => l in layout)) sources.push("layout");
-  if ([13, 30, 31].some((l) => l in merged)) sources.push("text-rows");
-  if ([13, 30, 31].some((l) => l in ocr)) sources.push("ocr");
-  const source = sources.length > 0 ? sources.join("+") : "unknown";
+    const sources: string[] = [];
+    if ([13, 30, 31].some((l) => l in acro)) sources.push("acroform");
+    if ([13, 30, 31].some((l) => l in layout)) sources.push("layout");
+    if ([13, 30, 31].some((l) => l in merged)) sources.push("text-rows");
+    if ([13, 30, 31].some((l) => l in ocr)) sources.push("ocr");
+    if (surface.ocrAlreadyApplied && !sources.includes("ocr")) {
+      sources.push("ocr");
+    }
+    const source = sources.length > 0 ? sources.join("+") : "unknown";
 
   if ([r13, r30, r31].every((v) => v === undefined) && items.length === 0) {
     return {
@@ -145,13 +149,7 @@ async function extractViaLayout(
 function extractViaMergedRows(
   rowStrings: readonly string[],
 ): Partial<Record<ScheduleCLine, string>> {
-  const out: Partial<Record<ScheduleCLine, string>> = {};
-  const rows = [...rowStrings];
-  for (const line of [13, 30, 31] as const) {
-    const v = extractLineAmountFromRows(rows, line);
-    if (v !== undefined) out[line] = v;
-  }
-  return out;
+  return extractScheduleCLineValuesFromRows(rowStrings);
 }
 
 function pickRaw(

@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   downscaleDimensions,
   isJpegBytes,
+  readJpegDimensions,
 } from "./decodeImage";
+import { readSchedulCJpegBytes } from "../../../test/imageFixture";
 
 describe("decodeImage", () => {
   it("isJpegBytes recognizes JPEG SOI marker", () => {
@@ -12,6 +14,11 @@ describe("decodeImage", () => {
     expect(isJpegBytes(new Uint8Array([0x25, 0x50, 0x44, 0x46]).buffer)).toBe(
       false,
     );
+  });
+
+  it("readJpegDimensions reads schedulC.jpg fixture size", () => {
+    const dims = readJpegDimensions(readSchedulCJpegBytes());
+    expect(dims).toEqual({ width: 1152, height: 846 });
   });
 
   it("downscaleDimensions preserves aspect ratio under max edge", () => {

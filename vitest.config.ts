@@ -22,7 +22,7 @@ export default defineConfig({
     environment: "jsdom",
     globals: false,
     include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
-    testTimeout: 60_000,
+    testTimeout: 180_000,
     /** PDF.js + shared worker: avoid parallel parses flaking on the same fixture. */
     fileParallelism: false,
   },

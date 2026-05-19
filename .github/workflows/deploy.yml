@@ -34,6 +34,7 @@ jobs:
       - name: Unit tests
         run: |
           test -f f1040sc.pdf || (echo "Missing f1040sc.pdf at repo root (required for tests)" && exit 1)
+          test -f schedulC.jpg || (echo "Missing schedulC.jpg at repo root (required for tests)" && exit 1)
           npm test
 
       - name: Set Pages base path
