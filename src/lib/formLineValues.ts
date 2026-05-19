@@ -4,11 +4,23 @@ import { extractLastGuardedAmountFromRow } from "./scheduleCAmountGuards";
 
 const SCHEDULE_LINES: ScheduleCLine[] = [13, 30, 31];
 
+/** Strip OCR punctuation artifacts from field values (e.g. "You 13]" → "You 13"). */
+export function cleanFieldValue(value: string): string {
+  return value
+    .replace(/[\]\[(){},;]+$/g, "")
+    .replace(/^[\]\[(){},;]+/g, "")
+    .replace(/\bvou\b/gi, "You")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 /** Printed Schedule C phrases — rows dominated by these are labels, not user entries. */
 const LABEL_PHRASES: RegExp[] = [
   /\bschedule\s*c\b/i,
   /\bprofit\s+or\s+loss\s+from\s+business\b/i,
   /\bdepreciation\s+and\s+section\s+179\b/i,
+  /\bsection\s+179\b/i,
+  /\bform\s+8829\b/i,
   /\bexpenses\s+for\s+business\s+use\s+of\s+(?:your\s+)?home\b/i,
   /\bnet\s+profit\s+or\s*\(?\s*loss\s*\)?/i,
   /\bdepartment\s+of\s+(?:the\s+)?treasury\b/i,
@@ -31,6 +43,13 @@ export function normalizeOcrRowText(row: string): string {
 
 export function isLikelyPrintedLabelRow(row: string): boolean {
   const t = normalizeOcrRowText(row);
+  if (
+    /\bline\s*13\b/i.test(t) &&
+    /\b179\b/.test(t) &&
+    !/\byou\b/i.test(t)
+  ) {
+    return true;
+  }
   if (t.length > 140) return true;
   const words = t.split(/\s+/).filter(Boolean);
   if (words.length >= 14) return true;
@@ -67,7 +86,7 @@ export function extractLineUserInputFromRows(
       /\b(?:13|l3|I3)\b/i.test(row) &&
       row.length <= 48
     ) {
-      return row.replace(/\bvou\b/gi, "You").replace(/\s+/g, " ");
+      return cleanFieldValue(row);
     }
     if (
       n === 30 &&
@@ -75,7 +94,7 @@ export function extractLineUserInputFromRows(
       /\b(?:30|3O)\b/i.test(row) &&
       row.length <= 48
     ) {
-      return row.replace(/\s+/g, " ");
+      return cleanFieldValue(row);
     }
     if (
       n === 31 &&
@@ -83,7 +102,7 @@ export function extractLineUserInputFromRows(
       /\b(?:31|3I|3l)\b/i.test(row) &&
       row.length <= 48
     ) {
-      return row.replace(/\s+/g, " ");
+      return cleanFieldValue(row);
     }
 
     const tailWord = new RegExp(
@@ -112,6 +131,7 @@ export function extractLineUserInputFromRows(
 
   for (const raw of rowStrings) {
     const row = normalizeOcrRowText(raw);
+    if (isLikelyPrintedLabelRow(row)) continue;
     const head = new RegExp(`^${n}\\b\\s*(.+)$`, "i");
     const m = row.match(head);
     if (!m?.[1]) continue;
@@ -122,7 +142,7 @@ export function extractLineUserInputFromRows(
     if (money) return money;
 
     const short = pickShortFieldValue(rest);
-    if (short) return short;
+    if (short) return cleanFieldValue(short);
   }
 
   return undefined;
@@ -148,7 +168,7 @@ function pickShortFieldValue(fragment: string): string | undefined {
   return undefined;
 }
 
-/** Currency first, then handwritten/typed field text tied to line numbers. */
+/** User-entered field text first; currency only on non-label rows (matches PDF priority). */
 export function extractScheduleCLineValuesFromRows(
   rowStrings: readonly string[],
 ): Partial<Record<ScheduleCLine, string>> {
@@ -156,52 +176,25 @@ export function extractScheduleCLineValuesFromRows(
   const out: Partial<Record<ScheduleCLine, string>> = {};
 
   for (const line of SCHEDULE_LINES) {
-    const amount = extractLineAmountFromRows(rows, line);
-    if (amount) {
-      out[line] = amount;
+    const user = extractLineUserInputFromRows(rows, line);
+    if (user) {
+      out[line] = cleanFieldValue(user);
       continue;
     }
-    const user = extractLineUserInputFromRows(rows, line);
-    if (user) out[line] = user;
+    const amount = extractLineAmountFromRowsSkippingLabels(rows, line);
+    if (amount) out[line] = amount;
   }
 
   return out;
 }
 
-/** Short non-label snippets that look like filled-in answers (for chip list). */
-export function extractUserInputCandidatesFromRows(
+/** Row-based currency extraction that ignores printed form label lines. */
+export function extractLineAmountFromRowsSkippingLabels(
   rowStrings: readonly string[],
-): { label: string; value: string }[] {
-  const candidates: { label: string; value: string }[] = [];
-  const seen = new Set<string>();
-
-  const push = (label: string, value: string) => {
-    const v = value.trim();
-    if (v.length < 2) return;
-    const key = v.toLowerCase();
-    if (seen.has(key)) return;
-    seen.add(key);
-    candidates.push({ label, value: v });
-  };
-
-  for (const raw of rowStrings) {
-    const row = normalizeOcrRowText(raw);
-    if (!row || isLikelyPrintedLabelRow(row)) continue;
-
-    for (const line of SCHEDULE_LINES) {
-      const v = extractLineUserInputFromRows([row], line);
-      if (v) {
-        push(`Line ${line} field`, v);
-      }
-    }
-
-    const money = row.match(
-      /\(?\s*\$?\s*[\d,]+\.?\d*\s*\)?|-?\$?\s*[\d,]+\.\d{2}\b/,
-    );
-    if (money) {
-      push("Amount", money[0]!);
-    }
-  }
-
-  return candidates;
+  line: ScheduleCLine,
+): string | undefined {
+  const filtered = rowStrings.filter(
+    (r) => !isLikelyPrintedLabelRow(normalizeOcrRowText(r)),
+  );
+  return extractLineAmountFromRows([...filtered], line);
 }

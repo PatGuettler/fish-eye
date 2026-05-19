@@ -41,9 +41,10 @@ describe("schedulC.jpg end-to-end parsing", () => {
     if (!result.ok) return;
 
     expect(result.source).toContain("ocr");
-    expect(result.items.length).toBeGreaterThan(10);
+    expect(result.items.length).toBeGreaterThanOrEqual(3);
+    expect(result.items.length).toBeLessThan(12);
     expect(
-      result.items.some((i) => /schedule|profit|business/i.test(i.label + i.value)),
+      result.items.some((i) => /line\s*13|line\s*30|line\s*31/i.test(i.label)),
     ).toBe(true);
 
     const ids = new Set(result.items.map((i) => i.id));
@@ -79,6 +80,12 @@ describe("schedulC.jpg end-to-end parsing", () => {
         foundUser13,
         `OCR saw line-13 user text (${line13Rows.join(" | ")}) but chips/raw did not include it`,
       ).toBe(true);
+      expect(result.raw.box13).toMatch(/\byou\s*13\b/i);
+    }
+
+    const line30Rows = rows.filter((r) => /\b30\b/i.test(r) && /you|vou/i.test(r));
+    if (line30Rows.length > 0) {
+      expect(result.raw.box30).toMatch(/\byou\s*30\b/i);
     }
   }, 180_000);
 });

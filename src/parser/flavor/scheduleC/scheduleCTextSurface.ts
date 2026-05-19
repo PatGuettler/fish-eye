@@ -1,4 +1,5 @@
 import type * as pdfjs from "pdfjs-dist";
+import type { OcrWordLike } from "../../../lib/ocrPageRows";
 import {
   isImageParsedContent,
   isPdfParsedContent,
@@ -8,6 +9,7 @@ import {
 /** Shared input for Schedule C extraction regardless of PDF vs image source. */
 export type ScheduleCTextSurface = {
   readonly rowStrings: readonly string[];
+  readonly ocrWords: readonly OcrWordLike[];
   readonly fields: ReadonlyMap<string, string>;
   readonly pdf?: pdfjs.PDFDocumentProxy;
   /** True when rowStrings already came from OCR (skip PDF OCR pass). */
@@ -20,6 +22,7 @@ export function scheduleCTextSurfaceFromContent(
   if (isPdfParsedContent(content)) {
     return {
       rowStrings: content.rowStrings,
+      ocrWords: [],
       fields: content.fields,
       pdf: content.pdf,
       ocrAlreadyApplied: false,
@@ -28,6 +31,7 @@ export function scheduleCTextSurfaceFromContent(
   if (isImageParsedContent(content)) {
     return {
       rowStrings: content.rowStrings,
+      ocrWords: content.ocrWords,
       fields: new Map(),
       ocrAlreadyApplied: true,
     };

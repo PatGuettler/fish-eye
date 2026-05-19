@@ -1,4 +1,5 @@
 import type * as pdfjs from "pdfjs-dist";
+import type { OcrWordLike } from "../../lib/ocrPageRows";
 import type { DocumentFormatKind } from "./DocumentFormatKind";
 
 /** Normalized output of a PDF format parser. */
@@ -13,6 +14,7 @@ export type PdfParsedContent = {
 export type ImageParsedContent = {
   readonly kind: "jpeg";
   readonly rowStrings: readonly string[];
+  readonly ocrWords: readonly OcrWordLike[];
   readonly width: number;
   readonly height: number;
 };

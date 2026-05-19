@@ -12,6 +12,7 @@ describe("ScheduleCDocumentFlavor (JPEG content)", () => {
         "30 1,500",
         "31 (200)",
       ],
+      ocrWords: [],
       width: 800,
       height: 1200,
     });

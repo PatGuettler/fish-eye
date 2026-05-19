@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  cleanFieldValue,
   extractLineUserInputFromRows,
   extractScheduleCLineValuesFromRows,
   normalizeOcrRowText,
@@ -31,6 +32,18 @@ describe("formLineValues", () => {
 
   it("extracts vou 13 after OCR normalization", () => {
     const rows = ["Part II", "Vou 13"];
+    expect(extractScheduleCLineValuesFromRows(rows)[13]).toBe("You 13");
+  });
+
+  it("strips OCR bracket artifacts", () => {
+    expect(cleanFieldValue("You 13]")).toBe("You 13");
+  });
+
+  it("prefers You 13 over section 179 on the label row", () => {
+    const rows = [
+      "13 Depreciation and section 179 expense deduction",
+      "You 13",
+    ];
     expect(extractScheduleCLineValuesFromRows(rows)[13]).toBe("You 13");
   });
 });

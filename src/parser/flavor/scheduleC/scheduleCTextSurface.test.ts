@@ -22,6 +22,7 @@ describe("scheduleCTextSurfaceFromContent", () => {
     const surface = scheduleCTextSurfaceFromContent({
       kind: "jpeg",
       rowStrings: ["Schedule C", "13  500"],
+      ocrWords: [],
       width: 100,
       height: 200,
     });

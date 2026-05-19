@@ -3,7 +3,7 @@ import { extractScheduleCAcroValues } from "../../../lib/acroFormMatch";
 import type { ScheduleCLine } from "../../../lib/acroFormMatch";
 import { extractScheduleCLineValuesFromRows } from "../../../lib/formLineValues";
 import { extractLinesFromOcrRows, ocrPdfToLineStrings } from "../../../lib/ocrExtract";
-import { extractLineAmountFromRows } from "../../../lib/pdfTextRows";
+import { extractScheduleCLineValuesFromOcrWords } from "../../../lib/ocrLayoutExtract";
 import {
   collectPageViewportItems,
   parseAmountForLineFromPageItems,
@@ -67,11 +67,19 @@ async function parseScheduleCFromSurface(
   const fieldMap = new Map(surface.fields);
   const acro = extractScheduleCAcroValues(fieldMap);
   const layout = surface.pdf ? await extractViaLayout(surface.pdf) : {};
-  const merged = extractViaMergedRows(surface.rowStrings);
+  const merged = surface.ocrAlreadyApplied
+    ? {}
+    : extractViaMergedRows(surface.rowStrings);
 
   let ocr: Partial<Record<ScheduleCLine, string>> = {};
   if (surface.ocrAlreadyApplied) {
-    ocr = extractScheduleCLineValuesFromRows(surface.rowStrings);
+    ocr =
+      surface.ocrWords.length > 0
+        ? extractScheduleCLineValuesFromOcrWords(
+            surface.ocrWords,
+            surface.rowStrings,
+          )
+        : extractScheduleCLineValuesFromRows(surface.rowStrings);
   } else {
     const preOcrCount = countNonemptyFromLayers(acro, layout, merged);
     if (preOcrCount < 3 && surface.pdf && typeof document !== "undefined") {
@@ -104,6 +112,7 @@ async function parseScheduleCFromSurface(
     fieldMap,
     surface.rowStrings,
     raw,
+    surface.ocrAlreadyApplied ? { omitTextRowChips: true } : undefined,
   );
 
     const sources: string[] = [];

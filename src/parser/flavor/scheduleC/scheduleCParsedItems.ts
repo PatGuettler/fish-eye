@@ -1,6 +1,10 @@
-import { extractUserInputCandidatesFromRows } from "../../../lib/formLineValues";
 import type { ScheduleCBoxRaw } from "../../../lib/scheduleCExtract";
 import type { ParsedDocumentItem } from "../../core/types";
+
+export type ScheduleCChipBuildOptions = {
+  /** When true (photo OCR), omit every text-layer row chip — only highlights and AcroForm fields. */
+  readonly omitTextRowChips?: boolean;
+};
 
 const HIGHLIGHT_KEYS: { label: string; key: keyof ScheduleCBoxRaw }[] = [
   { label: "Line 13 — Depreciation", key: "box13" },
@@ -32,6 +36,7 @@ export function buildScheduleCParsedDocumentItems(
   fields: Map<string, string>,
   rowStrings: readonly string[],
   raw: ScheduleCBoxRaw,
+  options?: ScheduleCChipBuildOptions,
 ): ParsedDocumentItem[] {
   const items: ParsedDocumentItem[] = [];
   const seenValues = new Set<string>();
@@ -49,18 +54,6 @@ export function buildScheduleCParsedDocumentItems(
     push(itemId("line", key), label, raw[key]);
   }
 
-  for (const { label, value } of extractUserInputCandidatesFromRows(rowStrings)) {
-    const already =
-      raw.box13 === value || raw.box30 === value || raw.box31 === value;
-    if (!already) {
-      push(
-        itemId("field", `ui-${label}-${value}`),
-        label,
-        value,
-      );
-    }
-  }
-
   const acroNames = [...fields.keys()].filter(isPrimaryAcroFieldName).sort();
   for (const name of acroNames) {
     const val = fields.get(name);
@@ -75,13 +68,15 @@ export function buildScheduleCParsedDocumentItems(
     push(itemId("field", name), humanizeFieldName(name), String(val));
   }
 
-  let rowIdx = 0;
-  for (const row of rowStrings) {
-    const t = row.replace(/\s+/g, " ").trim();
-    if (t.length < 2) continue;
-    if (t.length > 240) continue;
-    const preview = t.length > 56 ? `${t.slice(0, 53)}…` : t;
-    push(itemId("text", `r${rowIdx++}`), preview, t);
+  if (!options?.omitTextRowChips) {
+    let rowIdx = 0;
+    for (const row of rowStrings) {
+      const t = row.replace(/\s+/g, " ").trim();
+      if (t.length < 2) continue;
+      if (t.length > 240) continue;
+      const preview = t.length > 56 ? `${t.slice(0, 53)}…` : t;
+      push(itemId("text", `r${rowIdx++}`), preview, t);
+    }
   }
 
   return items;

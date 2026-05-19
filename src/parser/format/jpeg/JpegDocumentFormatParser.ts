@@ -14,7 +14,7 @@ export class JpegDocumentFormatParser extends DocumentFormatParser {
       if (!isJpegBytes(bytes)) {
         return { ok: false, error: "File is not a valid JPEG image." };
       }
-      const rowStrings = await ocrJpegBytes(bytes);
+      const { rowStrings, words: ocrWords } = await ocrJpegBytes(bytes);
       if (rowStrings.length === 0) {
         return {
           ok: false,
@@ -30,6 +30,7 @@ export class JpegDocumentFormatParser extends DocumentFormatParser {
         content: {
           kind: "jpeg",
           rowStrings,
+          ocrWords,
           width,
           height,
         },

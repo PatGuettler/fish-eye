@@ -22,7 +22,7 @@ type PageLike = {
   blocks?: { lines?: LineLike[]; paragraphs?: { lines?: LineLike[] }[] }[];
 };
 
-function wordsFromPage(page: PageLike): OcrWordLike[] {
+export function ocrWordsFromPage(page: PageLike): OcrWordLike[] {
   const out: OcrWordLike[] = [];
   const pushWord = (w: WordLike) => {
     const text = w.text?.trim();
@@ -77,7 +77,7 @@ function linesFromPage(page: PageLike): string[] {
 /** Cluster OCR words by baseline, then merge into row strings (same idea as PDF text layer). */
 export function rowStringsFromOcrPage(page: PageLike): string[] {
   const fromLines = linesFromPage(page);
-  const words = wordsFromPage(page);
+  const words = ocrWordsFromPage(page);
   if (!words.length) {
     return fromLines;
   }
