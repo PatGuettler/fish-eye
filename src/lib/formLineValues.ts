@@ -68,7 +68,8 @@ function lineNumberTailPattern(line: ScheduleCLine): RegExp {
 }
 
 /**
- * Value entered beside a line number (e.g. "You 13") without assuming box coordinates.
+ * Short user-entered text tied to a line number (e.g. "You 13", "ABC 30").
+ * Uses row text and line-index patterns only — no fixed coordinates or expected values.
  */
 export function extractLineUserInputFromRows(
   rowStrings: readonly string[],
@@ -79,31 +80,7 @@ export function extractLineUserInputFromRows(
   for (const raw of rowStrings) {
     const row = normalizeOcrRowText(raw);
     if (!row || isLikelyPrintedLabelRow(row)) continue;
-
-    if (
-      n === 13 &&
-      /\byou\b/i.test(row) &&
-      /\b(?:13|l3|I3)\b/i.test(row) &&
-      row.length <= 48
-    ) {
-      return cleanFieldValue(row);
-    }
-    if (
-      n === 30 &&
-      /\byou\b/i.test(row) &&
-      /\b(?:30|3O)\b/i.test(row) &&
-      row.length <= 48
-    ) {
-      return cleanFieldValue(row);
-    }
-    if (
-      n === 31 &&
-      /\byou\b/i.test(row) &&
-      /\b(?:31|3I|3l)\b/i.test(row) &&
-      row.length <= 48
-    ) {
-      return cleanFieldValue(row);
-    }
+    if (row.length > 48) continue;
 
     const tailWord = new RegExp(
       `\\b([A-Za-z][A-Za-z0-9'\\-]{0,24}(?:\\s+[A-Za-z][A-Za-z0-9'\\-]{0,24}){0,2})\\s+${n}\\s*$`,
@@ -113,7 +90,7 @@ export function extractLineUserInputFromRows(
     if (tailMatch?.[1]) {
       const candidate = `${tailMatch[1].trim()} ${n}`.replace(/\s+/g, " ");
       if (candidate.length >= 2 && candidate.length <= 48) {
-        return candidate;
+        return cleanFieldValue(candidate);
       }
     }
 
@@ -123,7 +100,7 @@ export function extractLineUserInputFromRows(
       if (tokens.length >= 1 && tokens.length <= 4) {
         const prefix = tokens.slice(-3).join(" ");
         if (prefix.length >= 2 && !isLikelyPrintedLabelRow(prefix)) {
-          return `${prefix} ${n}`.replace(/\s+/g, " ");
+          return cleanFieldValue(`${prefix} ${n}`.replace(/\s+/g, " "));
         }
       }
     }
